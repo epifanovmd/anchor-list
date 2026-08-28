@@ -18,6 +18,7 @@ export type ListPerfCounter =
   | "mvcpCapture"
   | "mvcpRestore"
   | "mvcpSecondPass"
+  | "mvcpSkippedFast"
   | "mvcpByData"
   | "mvcpBySize"
   | "mvcpClamped"
@@ -68,6 +69,7 @@ const COUNTERS: ListPerfCounter[] = [
   "mvcpCapture",
   "mvcpRestore",
   "mvcpSecondPass",
+  "mvcpSkippedFast",
   "mvcpByData",
   "mvcpBySize",
   "mvcpClamped",

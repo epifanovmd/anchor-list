@@ -123,7 +123,7 @@ export const formatListPerfReport = ({
 
   if (counters.mvcpCapture > 0 || counters.mvcpRestore > 0) {
     lines.push(
-      `  mvcp      ${counters.mvcpCapture} захватов · ${counters.mvcpRestore} восстановлений (данные ${counters.mvcpByData} / размер ${counters.mvcpBySize}) · второй проход ${counters.mvcpSecondPass} · сдвиг ${pair(
+      `  mvcp      ${counters.mvcpCapture} захватов · ${counters.mvcpRestore} восстановлений (данные ${counters.mvcpByData} / размер ${counters.mvcpBySize}) · на броске пропущено ${counters.mvcpSkippedFast} · второй проход ${counters.mvcpSecondPass} · сдвиг ${pair(
         stats.mvcpShiftPx,
         0,
       )}px`,

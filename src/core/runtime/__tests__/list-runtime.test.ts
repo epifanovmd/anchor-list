@@ -428,6 +428,96 @@ describe("ListRuntime — удержание позиции", () => {
     expect(runtime.getScroll()).toBe(1200);
   });
 
+  /**
+   * Жалоба: на быстром броске список встаёт колом, а замер показывает десятки
+   * восстановлений позиции со средним сдвигом в четыре пикселя.
+   *
+   * В неизмеренной территории каждая новая строка приходит с настоящей высотой,
+   * и каждый такой замер снимает якорь. Один flush тогда стоит двух полных
+   * привязок вместо одной плюс нативной подстройки скролла — ради сдвига,
+   * который никто не увидит: строку, ради которой он делается, уносит с экрана
+   * раньше, чем сдвиг доедет.
+   */
+  it("не удерживает позицию по размеру, пока список летит", () => {
+    const { store, runtime } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 400; index++)
+      runtime.setItemSize(`k${index}`, 100);
+    nextFrame();
+
+    // Вьюпорт 500px: три события подряд по 400px за кадр — 25px/мс, бросок.
+    for (let frame = 1; frame <= 3; frame++) {
+      jest.advanceTimersByTime(16);
+      runtime.setScroll(10000 + frame * 400);
+    }
+
+    const scrollBefore = runtime.getScroll();
+
+    runtime.setItemSize("k2", 300);
+    nextFrame();
+
+    expect(store.peek("scrollAdjust")).toBe(0);
+    expect(runtime.getScroll()).toBe(scrollBefore);
+  });
+
+  /**
+   * Обратная сторона: на спокойном скролле компенсация обязана работать как
+   * работала. Пользователь читает и видит, как строка уезжает под ним.
+   */
+  it("удерживает позицию по размеру на спокойном скролле", () => {
+    const { store, runtime } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 400; index++)
+      runtime.setItemSize(`k${index}`, 100);
+    nextFrame();
+
+    // 16px за кадр — один пиксель в миллисекунду, обычное чтение.
+    for (let frame = 1; frame <= 3; frame++) {
+      jest.advanceTimersByTime(16);
+      runtime.setScroll(10000 + frame * 16);
+    }
+
+    runtime.setItemSize("k2", 300);
+    nextFrame();
+
+    expect(store.peek("scrollAdjust")).toBe(200);
+  });
+
+  /**
+   * Решение принимается в момент замера, а не в момент flush: к flush контент
+   * уже вырос, и скорость к тому времени отвечает на другой вопрос. Якорь снят
+   * на спокойном скролле — значит он обязан быть применён, даже если список
+   * успел разогнаться.
+   */
+  it("доводит до конца компенсацию, снятую до броска", () => {
+    const { store, runtime } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 400; index++)
+      runtime.setItemSize(`k${index}`, 100);
+    nextFrame();
+
+    runtime.setScroll(10000);
+    runtime.setItemSize("k2", 300);
+
+    // Бросок начался уже после того, как якорь был снят.
+    for (let frame = 1; frame <= 3; frame++) {
+      jest.advanceTimersByTime(16);
+      runtime.setScroll(10000 + frame * 400);
+    }
+    nextFrame();
+
+    expect(store.peek("scrollAdjust")).toBe(200);
+  });
+
   it("отбрасывает событие скролла, отправленное до применения сдвига", () => {
     const { runtime } = createRuntime(rows(40), {
       maintainVisibleContentPositionData: true,

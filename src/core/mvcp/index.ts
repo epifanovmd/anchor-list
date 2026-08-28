@@ -1,4 +1,5 @@
 export * from "./anchor-picker";
+export * from "./compensation-gate";
 export * from "./mvcp";
 export * from "./scroll-adjust";
 export * from "./shift-queue";

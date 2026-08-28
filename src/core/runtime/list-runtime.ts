@@ -17,7 +17,10 @@ import {
   LayoutScheduler,
   RenderReadiness,
 } from "../layout";
-import { MaintainVisibleContentPosition } from "../mvcp";
+import {
+  isPastCompensationSpeed,
+  MaintainVisibleContentPosition,
+} from "../mvcp";
 import type { IScrollAdapter } from "../scroll";
 import {
   getItemScrollOffset,
@@ -728,8 +731,15 @@ export class ListRuntime<TItem> {
       );
     }
 
-    if (this.props.maintainVisibleContentPositionSize) {
+    // Скорость снимается до применения замера: после него контент уже вырос, и
+    // тот же вопрос отвечал бы уже про другое состояние списка.
+    if (
+      this.props.maintainVisibleContentPositionSize &&
+      !isPastCompensationSpeed(this.velocity.get(), this.scrollLength)
+    ) {
       this.mvcp.capture("размер");
+    } else if (this.props.maintainVisibleContentPositionSize) {
+      listPerf.count("mvcpSkippedFast");
     }
 
     this.metrics.setMeasuredSize(key, size);
@@ -868,7 +878,10 @@ export class ListRuntime<TItem> {
     this.lastPassAt = Date.now();
     this.metrics.clearPending();
 
-    if (this.props.maintainVisibleContentPositionSize) {
+    // По снятому якорю, а не по пропу: на броске замер якорь не снимает, и
+    // проходить через компенсацию не за чем — это стоило бы двух привязок
+    // вместо одной ради сдвига, которого не было.
+    if (this.props.maintainVisibleContentPositionSize && this.mvcp.isArmed()) {
       this.restoreVisiblePosition("размер");
     } else {
       this.calculateItemsInView();
