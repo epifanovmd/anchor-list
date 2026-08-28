@@ -13,8 +13,23 @@ import type { IAnchorListSharedValues } from "../types";
  *
  * Смещение скролла и фаза жеста живут только на UI-потоке: они меняются на
  * каждом кадре, и гонять их через стор значило бы гонять их через JS.
+ *
+ * Расстояния до кромок и флаги — там же, но по другой причине: они выводятся из
+ * смещения, и считает их {@link useEdgeSharedValues} покадрово. Писатель у
+ * значения обязан быть один: зеркало из стора приходило бы следом за отставшим
+ * проходом JS и возвращало значение на кадр назад — на экране это мигание.
  */
-type DirectName = "scrollOffset" | "isDragging" | "isMomentum";
+type DirectName =
+  | "scrollOffset"
+  | "isDragging"
+  | "isMomentum"
+  | "distanceFromStart"
+  | "distanceFromEnd"
+  | "isAtStart"
+  | "isAtEnd"
+  | "isNearStart"
+  | "isNearEnd"
+  | "isWithinMaintainScrollAtEndThreshold";
 
 /** Публикуемые значения, у которых есть сигнал-источник в сторе. */
 type MirroredName = Exclude<keyof IAnchorListSharedValues, DirectName>;
@@ -37,13 +52,6 @@ const SIGNAL_OF: Record<MirroredName, AnchorListSignalName> = {
   alignItemsAtEndPadding: "alignItemsAtEndPadding",
   anchoredEndSpaceSize: "anchoredEndSpaceSize",
   readyToRender: "readyToRender",
-  isAtStart: "isAtStart",
-  isAtEnd: "isAtEnd",
-  isNearStart: "isNearStart",
-  isNearEnd: "isNearEnd",
-  isWithinMaintainScrollAtEndThreshold: "isWithinMaintainScrollAtEndThreshold",
-  distanceFromStart: "distanceFromStart",
-  distanceFromEnd: "distanceFromEnd",
   firstVisibleIndex: "firstVisibleIndex",
   lastVisibleIndex: "lastVisibleIndex",
   activeStickyStartIndex: "activeStickyStartIndex",

@@ -150,6 +150,31 @@ describe("useListScrollHandler", () => {
     expect(onScroll).toHaveBeenCalledWith(MIDDLE + 30, expect.any(Number));
   });
 
+  it("берёт шаг перехода в JS из пропа", () => {
+    const { handlers, onScroll, seed } = setup({ scrollThrottleDistance: 100 });
+
+    seed(MIDDLE);
+
+    // Больше умолчания, но меньше заданного шага — в JS не уходит.
+    handlers.onScroll(scrollTo(MIDDLE + 40));
+    expect(onScroll).not.toHaveBeenCalled();
+
+    handlers.onScroll(scrollTo(MIDDLE + 120));
+    expect(onScroll).toHaveBeenCalledWith(MIDDLE + 120, expect.any(Number));
+  });
+
+  it("без пропа шагает по умолчанию", () => {
+    const { handlers, onScroll, seed } = setup();
+
+    seed(MIDDLE);
+
+    handlers.onScroll(scrollTo(MIDDLE + 23));
+    expect(onScroll).not.toHaveBeenCalled();
+
+    handlers.onScroll(scrollTo(MIDDLE + 24));
+    expect(onScroll).toHaveBeenCalledTimes(1);
+  });
+
   /**
    * Доскроллили до самого верха и не убрали палец. Последнее событие отличается
    * от предыдущего меньше чем на шаг, и без досылки оно до JS не доходит: флаг

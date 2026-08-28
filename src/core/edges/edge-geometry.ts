@@ -27,6 +27,21 @@ export interface IEdgeGeometry {
 const HYSTERESIS = 1.3;
 
 /**
+ * Что нужно для расчёта расстояний — и ничего сверх того.
+ *
+ * Уже: {@link IEdgeCheckContext} структурно подходит, а UI-поток берёт всё
+ * перечисленное прямо из события скролла.
+ */
+export interface IEdgeGeometryInput {
+  /** Смещение в координатах контента. */
+  scroll: number;
+  scrollLength: number;
+  contentSize: number;
+  /** Отступ у конца контента, не считающийся расстоянием до кромки. */
+  contentInsetEnd: number;
+}
+
+/**
  * Геометрия кромок.
  *
  * Зачем нужна: и проверка порогов, и разблокировка общего гейта считают одни и
@@ -41,11 +56,15 @@ export const getEdgeGeometry = ({
   scrollLength,
   contentSize,
   contentInsetEnd,
-}: IEdgeCheckContext): IEdgeGeometry => ({
-  distanceFromStart: scroll,
-  distanceFromEnd: contentSize - scroll - scrollLength - contentInsetEnd,
-  isContentShorter: contentSize < scrollLength,
-});
+}: IEdgeGeometryInput): IEdgeGeometry => {
+  "worklet";
+
+  return {
+    distanceFromStart: scroll,
+    distanceFromEnd: contentSize - scroll - scrollLength - contentInsetEnd,
+    isContentShorter: contentSize < scrollLength,
+  };
+};
 
 /**
  * Ушли ли за порог настолько, чтобы кромка считалась покинутой.

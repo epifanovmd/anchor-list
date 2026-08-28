@@ -15,7 +15,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { createRuntimeProps, ListRuntime } from "../core";
-import { useListScrollHandler, useListSharedValues } from "../hooks";
+import {
+  useEdgeSharedValues,
+  useListScrollHandler,
+  useListSharedValues,
+} from "../hooks";
 import { ListContextProvider, ListStore } from "../model";
 import type {
   IAnchorListProps,
@@ -31,8 +35,21 @@ import { ListStickyOverlay } from "./ListStickyOverlay";
 import { getScrollIndicatorInsets } from "./scroll-indicator";
 import { withEdgeInset } from "./sticky-placement";
 
-/** Как часто нативный слой шлёт события скролла, мс. */
-const SCROLL_EVENT_THROTTLE = 16;
+/**
+ * Как часто нативный слой шлёт события скролла, мс.
+ *
+ * Единица, а не шестнадцать: событиями `onScroll` смещение попадает на
+ * UI-поток, и другого пути у него нет. От их частоты зависит всё, что обязано
+ * совпадать со скроллом кадр в кадр — смещение наружу, расстояния до кромок,
+ * прилипание. Прикрывать здесь — значит терять кадры на 120 Гц, где событий
+ * приходит больше шестидесяти в секунду.
+ *
+ * Работы в JS это не добавляет: переход туда закрыт своим порогом по
+ * расстоянию (`scrollThrottleDistance`), а проходы внутри кадра сливаются. Пока
+ * шлюз был один на оба потока, шестнадцать были компромиссом; с раздельными
+ * шлюзами компромисс не нужен.
+ */
+const SCROLL_EVENT_THROTTLE = 1;
 
 /**
  * Виртуализированный список.
@@ -59,6 +76,7 @@ const AnchorListInner = <TItem,>(
     maintainVisibleContentPosition,
     sticky,
     snapToIndices,
+    scrollThrottleDistance,
     insetEnd,
     sharedValues,
     state,
@@ -97,6 +115,9 @@ const AnchorListInner = <TItem,>(
   const innerScrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollRef = refScrollView ?? innerScrollRef;
   const scrollOffset = useSharedValue(0);
+  const edgeContentSize = useSharedValue(0);
+  const edgeScrollLength = useSharedValue(0);
+  const edgeEndSpace = useSharedValue(0);
   // Якоря, которые слой прилипших копий уже нарисовал: -1 — копии нет.
   const pinnedStartIndex = useSharedValue(-1);
   const pinnedEndIndex = useSharedValue(-1);
@@ -155,6 +176,29 @@ const AnchorListInner = <TItem,>(
   );
 
   useListSharedValues(store, scrollOffset, sharedValues);
+
+  /**
+   * Геометрия контента на UI-потоке.
+   *
+   * Отдельные значения, а не подписка в React: от них зависит покадровый расчёт
+   * кромок, и приходить они обязаны туда же, где он идёт. Меняются на
+   * раскладке, так что зеркала из стора здесь достаточно.
+   */
+  const edgeGeometry = useMemo(
+    () => ({
+      contentSize: edgeContentSize,
+      scrollLength: edgeScrollLength,
+      anchoredEndSpaceSize: edgeEndSpace,
+    }),
+    [edgeContentSize, edgeScrollLength, edgeEndSpace],
+  );
+
+  useListSharedValues(store, scrollOffset, edgeGeometry);
+  useEdgeSharedValues(scrollOffset, sharedValues, edgeGeometry, {
+    startThreshold: runtimeProps.startReachedThreshold,
+    endThreshold: runtimeProps.endReachedThreshold,
+    maintainScrollAtEndThreshold: runtimeProps.maintainScrollAtEndThreshold,
+  });
 
   // Подписки снаружи могли завестись раньше списка — стор им отдаётся здесь.
   useEffect(() => state?.attach(store), [state, store]);
@@ -239,6 +283,7 @@ const AnchorListInner = <TItem,>(
     isDragging: sharedValues?.isDragging,
     isMomentum: sharedValues?.isMomentum,
     onScroll: updateScroll,
+    scrollThrottleDistance,
     onBeginDrag: handleScrollBeginDrag,
     onEndDrag: handleScrollEndDrag,
     onMomentumEnd: handleMomentumScrollEnd,

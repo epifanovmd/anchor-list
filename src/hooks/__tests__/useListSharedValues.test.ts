@@ -60,15 +60,15 @@ describe("useListSharedValues", () => {
   it("отдаёт текущее состояние сразу при монтировании", () => {
     const store = new ListStore();
     const activeStickyStartIndex = sharedValue(-1);
-    const isNearEnd = sharedValue(false);
+    const maxScroll = sharedValue(0);
 
     store.set("activeStickyStartIndex", 4);
-    store.set("isNearEnd", true);
+    store.set("maxScroll", 3700);
 
-    render(store, sharedValue(0), { activeStickyStartIndex, isNearEnd });
+    render(store, sharedValue(0), { activeStickyStartIndex, maxScroll });
 
     expect(activeStickyStartIndex.value).toBe(4);
-    expect(isNearEnd.value).toBe(true);
+    expect(maxScroll.value).toBe(3700);
   });
 
   it("копирует смещение скролла напрямую", () => {
@@ -109,13 +109,6 @@ describe("useListSharedValues", () => {
       alignItemsAtEndPadding: sharedValue(0),
       anchoredEndSpaceSize: sharedValue(0),
       readyToRender: sharedValue(false),
-      isAtStart: sharedValue(true),
-      isAtEnd: sharedValue(false),
-      isNearStart: sharedValue(true),
-      isNearEnd: sharedValue(false),
-      isWithinMaintainScrollAtEndThreshold: sharedValue(false),
-      distanceFromStart: sharedValue(0),
-      distanceFromEnd: sharedValue(0),
       firstVisibleIndex: sharedValue(-1),
       lastVisibleIndex: sharedValue(-1),
       activeStickyStartIndex: sharedValue(-1),
@@ -136,13 +129,6 @@ describe("useListSharedValues", () => {
       store.set("alignItemsAtEndPadding", 12);
       store.set("anchoredEndSpaceSize", 24);
       store.set("readyToRender", true);
-      store.set("isAtStart", false);
-      store.set("isAtEnd", true);
-      store.set("isNearStart", false);
-      store.set("isNearEnd", true);
-      store.set("isWithinMaintainScrollAtEndThreshold", true);
-      store.set("distanceFromStart", 1200);
-      store.set("distanceFromEnd", 30);
       store.set("firstVisibleIndex", 12);
       store.set("lastVisibleIndex", 17);
       store.set("activeStickyStartIndex", 4);
@@ -167,13 +153,6 @@ describe("useListSharedValues", () => {
       alignItemsAtEndPadding: 12,
       anchoredEndSpaceSize: 24,
       readyToRender: true,
-      isAtStart: false,
-      isAtEnd: true,
-      isNearStart: false,
-      isNearEnd: true,
-      isWithinMaintainScrollAtEndThreshold: true,
-      distanceFromStart: 1200,
-      distanceFromEnd: 30,
       firstVisibleIndex: 12,
       lastVisibleIndex: 17,
       activeStickyStartIndex: 4,
@@ -181,43 +160,18 @@ describe("useListSharedValues", () => {
     });
   });
 
-  it("публикует близость к концу списка", () => {
-    const store = new ListStore();
-    const isWithinMaintainScrollAtEndThreshold = sharedValue(false);
-
-    render(store, sharedValue(0), { isWithinMaintainScrollAtEndThreshold });
-
-    act(() => {
-      store.set("isWithinMaintainScrollAtEndThreshold", true);
-    });
-
-    // По нему решают, показывать ли кнопку «вниз»: порог свой, не тот, по
-    // которому идёт подгрузка.
-    expect(isWithinMaintainScrollAtEndThreshold.value).toBe(true);
-  });
-
-  it("отдаёт близость к концу сразу при монтировании", () => {
-    const store = new ListStore();
-    const isWithinMaintainScrollAtEndThreshold = sharedValue(false);
-
-    store.set("isWithinMaintainScrollAtEndThreshold", true);
-    render(store, sharedValue(0), { isWithinMaintainScrollAtEndThreshold });
-
-    expect(isWithinMaintainScrollAtEndThreshold.value).toBe(true);
-  });
-
   it("обновляет только объявленные значения", () => {
     const store = new ListStore();
-    const isNearEnd = sharedValue(false);
+    const velocity = sharedValue(0);
 
-    render(store, sharedValue(0), { isNearEnd });
+    render(store, sharedValue(0), { velocity });
 
     act(() => {
       store.set("activeStickyStartIndex", 3);
-      store.set("isNearEnd", true);
+      store.set("velocity", 2.5);
     });
 
-    expect(isNearEnd.value).toBe(true);
+    expect(velocity.value).toBe(2.5);
   });
 
   it("отписывается при размонтировании", () => {
@@ -229,9 +183,7 @@ describe("useListSharedValues", () => {
       renderer.unmount();
     });
 
-    act(() => {
-      store.set("isNearEnd", true);
-    });
+    act(() => {});
 
     expect(isNearEnd.value).toBe(false);
   });

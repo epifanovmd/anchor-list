@@ -5,14 +5,21 @@ import {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-/** Шаг, с которым пересчёт диапазона уходит в JS, px. */
-const JS_SCROLL_STEP = 24;
+/**
+ * Шаг, с которым пересчёт диапазона уходит в JS, по умолчанию, px.
+ *
+ * Величина подобрана под то, ради чего шаг и нужен: буфер отрисовки на порядок
+ * больше, и точность в один пиксель привязке контейнеров не нужна. Меньше —
+ * больше проходов на том же движении, больше — позже узнают о нём те, кто
+ * читает состояние через React.
+ */
+export const DEFAULT_SCROLL_THROTTLE_DISTANCE = 24;
 
 /**
  * Полоса у кромки контента, в которой шаг не применяется, px.
  *
  * Зачем нужна: «упёрлись в кромку» считается с точностью до пикселя, а шаг в
- * {@link JS_SCROLL_STEP} такой точности не даёт — последнее событие перед
+ * шаг такой точности не даёт — последнее событие перед
  * остановкой у самого верха отличается от предыдущего меньше чем на шаг и в JS
  * не уходит. Флаги `isAtStart`/`isAtEnd` тогда загораются не под пальцем, а
  * только после его отпускания, когда точное смещение досылается отдельно.
@@ -48,6 +55,13 @@ export interface IAnchorListScrollHandlerOptions {
    * больше список загружен.
    */
   onScroll: (offset: number, time: number) => void;
+  /**
+   * Шаг перехода в JS, px; по умолчанию {@link DEFAULT_SCROLL_THROTTLE_DISTANCE}.
+   *
+   * У кромок не применяется — там точность важнее экономии, см.
+   * {@link EDGE_REPORT_PX}.
+   */
+  scrollThrottleDistance?: number;
   onBeginDrag: () => void;
   onEndDrag: () => void;
   onMomentumEnd: () => void;
@@ -61,7 +75,7 @@ export interface IAnchorListScrollHandlerOptions {
  * дрожание заголовка.
  *
  * Какую проблему решает: переход в JS на каждом кадре скролла. Туда уходит
- * только пересчёт диапазона отрисовки, и то шагами по {@link JS_SCROLL_STEP}:
+ * только пересчёт диапазона отрисовки, и то шагами по `scrollThrottleDistance`:
  * он определяет, какие ячейки смонтированы, и точность в один пиксель ему не
  * нужна — буфер отрисовки на порядок больше этого шага.
  *
@@ -75,6 +89,7 @@ export const useListScrollHandler = ({
   isDragging,
   isMomentum,
   onScroll,
+  scrollThrottleDistance = DEFAULT_SCROLL_THROTTLE_DISTANCE,
   onBeginDrag,
   onEndDrag,
   onMomentumEnd,
@@ -102,7 +117,7 @@ export const useListScrollHandler = ({
 
       if (
         !atEdge &&
-        Math.abs(offset - lastReportedScroll.value) < JS_SCROLL_STEP
+        Math.abs(offset - lastReportedScroll.value) < scrollThrottleDistance
       )
         return;
 
