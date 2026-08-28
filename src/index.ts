@@ -4,14 +4,19 @@
  * Удерживает видимую позицию при изменениях выше вьюпорта, прилипает якорями к
  * обеим кромкам и отдаёт своё состояние на UI-поток.
  *
- * Наружу выходит только то, чем списком пользуются: сам компонент, его типы и
- * два способа читать состояние — `sharedValues` для UI-потока и
- * `useAnchorListState` для JS. Внутренности (контейнеры, пул, метрики, стор,
+ * Наружу выходит только то, чем списком пользуются: сам компонент, его типы,
+ * два способа читать состояние списка — `sharedValues` для UI-потока и
+ * `useAnchorListState` для JS — и состояние отдельной ячейки,
+ * `useAnchorListItemState`, переживающее переработку контейнера. Внутренности (контейнеры, пул, метрики, стор,
  * компенсация позиции) остаются внутри: они меняются вместе с реализацией, и
  * опираться на них нельзя.
  */
 export { AnchorList } from "./components";
-export { useAnchorListState, useAnchorListValue } from "./hooks";
+export {
+  useAnchorListItemState,
+  useAnchorListState,
+  useAnchorListValue,
+} from "./hooks";
 export type {
   AnchorListSignalMap,
   AnchorListSignalName,

@@ -10,6 +10,7 @@ import { anchorListStickyDebug } from "../debug";
 import { stickyDebugFlag } from "../debug/sticky-debug-flag";
 import { useListSignal } from "../hooks";
 import {
+  ListItemKeyProvider,
   useListRuntime,
   useListScrollOffset,
   useListStickyPinned,
@@ -144,9 +145,14 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
         style={[edge === "start" ? styles.start : styles.end, style]}
         pointerEvents={"none"}
       >
-        {index >= 0 && geometry !== undefined && itemKey !== undefined
-          ? content({ item, index, itemKey, type: "", extraData })
-          : null}
+        {index >= 0 && geometry !== undefined && itemKey !== undefined ? (
+          // Копия в слое — отдельное поддерево, и ключ ей нужен по той же
+          // причине, что и строке внутри контента: якорь меняется на ходу, а
+          // узел остаётся тем же.
+          <ListItemKeyProvider value={itemKey}>
+            {content({ item, index, itemKey, type: "", extraData })}
+          </ListItemKeyProvider>
+        ) : null}
       </Animated.View>
     );
   },

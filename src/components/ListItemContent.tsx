@@ -9,7 +9,7 @@ import React, {
 import { LayoutChangeEvent, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-import { useListRuntime } from "../model";
+import { ListItemKeyProvider, useListRuntime } from "../model";
 import { listPerf } from "../perf";
 import type { IAnchorListRenderItemProps } from "../types";
 import { shouldMeasureOnBind, shouldMeasureOnLayout } from "./measure-gate";
@@ -34,6 +34,10 @@ export interface IAnchorListItemContentProps {
  * Зачем нужно: контейнер переживает смену элемента, а его содержимое — это то,
  * что рисует `renderItem`. Ключ содержимого выбирает контейнер: при переработке
  * это тип строки, иначе — ключ элемента.
+ *
+ * Отсюда же поддерево получает ключ своего элемента: при переработке оно не
+ * перемонтируется, и всё, что ячейка хранит в себе, обязано знать, к какому
+ * элементу относится. На этом стоит `useAnchorListItemState`.
  *
  * Здесь же живёт измерение высоты, и оно устроено осторожнее, чем кажется:
  * - высота читается через `measure` после коммита, а `onLayout` служит лишь
@@ -135,22 +139,24 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
     listPerf.count("cellRender");
 
     return (
-      <View
-        ref={contentRef}
-        onLayout={fixedSize ? undefined : handleLayout}
-        collapsable={false}
-      >
-        {renderItem({
-          item: itemData,
-          index: itemIndex,
-          itemKey,
-          type: itemType,
-          extraData,
-          stickyOffset,
-          stickyPinned,
-        })}
-        {ItemSeparatorComponent ? <ItemSeparatorComponent /> : null}
-      </View>
+      <ListItemKeyProvider value={itemKey}>
+        <View
+          ref={contentRef}
+          onLayout={fixedSize ? undefined : handleLayout}
+          collapsable={false}
+        >
+          {renderItem({
+            item: itemData,
+            index: itemIndex,
+            itemKey,
+            type: itemType,
+            extraData,
+            stickyOffset,
+            stickyPinned,
+          })}
+          {ItemSeparatorComponent ? <ItemSeparatorComponent /> : null}
+        </View>
+      </ListItemKeyProvider>
     );
   },
 );
