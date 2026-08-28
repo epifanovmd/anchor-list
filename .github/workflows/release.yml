@@ -1,0 +1,141 @@
+name: Release
+
+# Выпуск начинается с тега — его ставит `yarn release`. Всё остальное делает
+# этот workflow: собирает в чистом окружении, проверяет собранное и публикует.
+# Так в npm попадает ровно то, что лежит в помеченном коммите, а не то, что
+# оказалось в `lib/` локально.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Отменять выпуск на полпути нельзя: пакет либо опубликован, либо нет.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Создание GitHub Release.
+      contents: write
+      # Короткоживущий OIDC-токен: им npm подтверждает издателя и подписывает
+      # провенанс. Долгоживущего токена в секретах при этом не заводится.
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      # Тег и версия в манифесте обязаны совпадать: иначе на npm уедет одна
+      # версия, а в истории git она будет помечена другой.
+      - name: Verify tag matches package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Тег $GITHUB_REF_NAME не совпадает с версией пакета $PKG_VERSION"
+            exit 1
+          fi
+
+          echo "Выпускается $PKG_VERSION"
+
+      - name: Lint files
+        run: yarn lint
+
+      - name: Typecheck files
+        run: yarn typecheck
+
+      - name: Run unit tests
+        run: yarn test --maxWorkers=2
+
+      - name: Build package
+        run: yarn prepare
+
+      # `--ignore-scripts`, чтобы `prepare` не пересобрал пакет заново: в архив
+      # обязано попасть ровно то, что собрано и проверено шагами выше.
+      - name: Pack tarball
+        id: pack
+        run: |
+          TARBALL="$(npm pack --silent --ignore-scripts | tail -n 1)"
+
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "Архив: $TARBALL"
+
+      # Точки входа из `exports` обязаны существовать, а тесты и внутренние
+      # каталоги — отсутствовать. Проверка дешёвая, а ошибка в `files` замечается
+      # только после публикации, когда исправить уже нельзя.
+      - name: Verify tarball contents
+        run: |
+          CONTENTS="$(tar -tzf "${{ steps.pack.outputs.tarball }}")"
+
+          for REQUIRED in \
+            package/package.json \
+            package/README.md \
+            package/LICENSE \
+            package/lib/module/index.js \
+            package/lib/typescript/src/index.d.ts \
+            package/src/index.ts
+          do
+            if ! grep -qxF "$REQUIRED" <<< "$CONTENTS"; then
+              echo "::error::В архиве нет $REQUIRED"
+              exit 1
+            fi
+          done
+
+          for FORBIDDEN in __tests__ __mocks__ __fixtures__ docs/ example/
+          do
+            if grep -qF "$FORBIDDEN" <<< "$CONTENTS"; then
+              echo "::error::В архив попало лишнее: $FORBIDDEN"
+              exit 1
+            fi
+          done
+
+          echo "Файлов в архиве: $(wc -l <<< "$CONTENTS")"
+
+      # Версия могла быть выложена раньше: первый выпуск делается вручную, а
+      # прогон бывает перезапущен. Спрашивать реестр заранее ненадёжно — после
+      # свежей публикации его реплики расходятся не сразу, и на вопрос «эта
+      # версия уже есть?» какое-то время приходит «нет». Поэтому решение
+      # принимается по ответу самой публикации: занятую версию npm называет
+      # прямо, и только этот отказ считается допустимым.
+      - name: Publish to npm
+        run: |
+          set +e
+          OUTPUT="$(npm publish "${{ steps.pack.outputs.tarball }}" --provenance 2>&1)"
+          STATUS=$?
+          set -e
+
+          echo "$OUTPUT"
+
+          if [ $STATUS -eq 0 ]; then
+            exit 0
+          fi
+
+          if grep -qiE "cannot publish over|EPUBLISHCONFLICT" <<< "$OUTPUT"; then
+            echo "::notice::Версия уже в реестре — публикация пропущена"
+            exit 0
+          fi
+
+          exit $STATUS
+
+      # Заметки генерирует сам GitHub от предыдущего выпуска. Разобранный по
+      # типам коммитов список лежит в CHANGELOG.md — он в репозитории и в архиве
+      # пакета, поэтому дублировать его сюда незачем.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --generate-notes

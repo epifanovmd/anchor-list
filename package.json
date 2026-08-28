@@ -1,0 +1,197 @@
+{
+  "name": "@epifanovmd/anchor-list",
+  "version": "0.1.0",
+  "description": "Виртуализированный список для React Native: удержание видимой позиции, прилипающие якоря на обеих кромках, состояние на UI-потоке.",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "epifanovmd-anchor-list-source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "CHANGELOG.md",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace @epifanovmd/anchor-list-example",
+    "clean": "del-cli example/android/build example/android/app/build example/ios/build lib",
+    "prepare": "bob build",
+    "typecheck": "tsc",
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "test": "jest",
+    "check": "yarn lint && yarn typecheck && yarn test",
+    "release": "release-it --only-version",
+    "web": "yarn workspace @epifanovmd/anchor-list-example web",
+    "build:web": "yarn workspace @epifanovmd/anchor-list-example build:web"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "ios",
+    "android",
+    "list",
+    "virtualized-list",
+    "virtual-list",
+    "virtualization",
+    "recycler",
+    "flatlist",
+    "infinite-scroll",
+    "pagination",
+    "chat",
+    "feed",
+    "scroll-anchoring",
+    "maintain-visible-content-position",
+    "mvcp",
+    "sticky",
+    "sticky-headers",
+    "reanimated",
+    "worklets",
+    "performance"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/epifanovmd/anchor-list.git"
+  },
+  "author": "epifanovmd <epifanovmd@gmail.com> (https://github.com/epifanovmd)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/epifanovmd/anchor-list/issues"
+  },
+  "homepage": "https://github.com/epifanovmd/anchor-list#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/compat": "^2.1.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
+    "@react-native/babel-preset": "0.86.1",
+    "@react-native/eslint-config": "0.86.1",
+    "@release-it/conventional-changelog": "^11.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-test-renderer": "^19.1.0",
+    "commitlint": "^21.0.2",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-check-file": "^3.3.2",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "jest": "^30.0.0",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.8.3",
+    "react": "19.2.8",
+    "react-native": "0.86.0",
+    "react-native-builder-bob": "^0.43.0",
+    "react-native-reanimated": "^4.6.0",
+    "react-native-worklets": "^0.12.1",
+    "react-test-renderer": "19.2.8",
+    "release-it": "^20.2.0",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-reanimated": ">=4.0.0",
+    "react-native-worklets": ">=0.5.0"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": false,
+    "quoteProps": "as-needed",
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "avoid"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
+    "transform": {
+      "^.+\\.(t|j)sx?$": [
+        "babel-jest",
+        {
+          "configFile": "./babel-jest.config.js"
+        }
+      ]
+    },
+    "modulePathIgnorePatterns": [
+      "<rootDir>/example/node_modules",
+      "<rootDir>/lib/"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "release-it": {
+    "hooks": {
+      "before:init": "yarn check"
+    },
+    "git": {
+      "requireBranch": "main",
+      "commitMessage": "chore: release ${version}",
+      "tagName": "v${version}"
+    },
+    "npm": {
+      "publish": false
+    },
+    "github": {
+      "release": false
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "angular"
+        },
+        "infile": "CHANGELOG.md"
+      }
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": "^20.19.4 || ^22.13.0 || ^24.3.0 || >= 25.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+pre-commit:
+  parallel: true
+  commands:
+    # Тот же набор, что у `yarn lint`. Конфиги `.mjs` из него исключены
+    # намеренно: базовый конфиг React Native тянет парсер Flow, и на них он
+    # спотыкается — а проверять там нечего.
+    lint:
+      glob: "*.{js,ts,tsx}"
+      run: npx eslint {staged_files}
+
+    types:
+      glob: "*.{js,mjs,ts,tsx}"
+      run: npx tsc
+
+    # Ядро считается вне React и покрыто юнит-тестами целиком — прогон занимает
+    # около секунды, поэтому идёт на каждый коммит, а не только в CI.
+    test:
+      glob: "*.{ts,tsx}"
+      run: npx jest --silent
+
+commit-msg:
+  parallel: true
+  commands:
+    commitlint:
+      run: npx commitlint --edit
