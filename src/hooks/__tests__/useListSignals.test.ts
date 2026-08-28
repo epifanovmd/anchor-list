@@ -10,6 +10,7 @@ const createValue = (store: ListStore): IAnchorListContextValue => ({
   store,
   runtime: {
     getItemAt: () => undefined,
+    getItemKeyAt: () => undefined,
     setItemSize: () => {},
     setContainerItemSize: () => {},
     isItemSizeFixed: () => false,

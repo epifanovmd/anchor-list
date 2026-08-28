@@ -57,6 +57,11 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
       [runtime, index, totalSize],
     );
+    const itemKey = useMemo(
+      () => runtime.getItemKeyAt(index),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [runtime, index, totalSize],
+    );
 
     const { edge } = config;
     const edgeOffset = config.offset;
@@ -139,8 +144,8 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
         style={[edge === "start" ? styles.start : styles.end, style]}
         pointerEvents={"none"}
       >
-        {index >= 0 && geometry !== undefined
-          ? content({ item, index, type: "", extraData })
+        {index >= 0 && geometry !== undefined && itemKey !== undefined
+          ? content({ item, index, itemKey, type: "", extraData })
           : null}
       </Animated.View>
     );

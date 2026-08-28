@@ -143,6 +143,7 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
         {renderItem({
           item: itemData,
           index: itemIndex,
+          itemKey,
           type: itemType,
           extraData,
           stickyOffset,

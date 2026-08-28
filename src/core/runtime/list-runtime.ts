@@ -270,6 +270,13 @@ export class ListRuntime<TItem> {
     return this.props.data[index];
   }
 
+  /** Ключ элемента по индексу; undefined — индекса нет в данных. */
+  getItemKeyAt(index: number): string | undefined {
+    return index >= 0 && index < this.props.data.length
+      ? this.items.getKey(index)
+      : undefined;
+  }
+
   /** Размер объявлен пропом: измерять такую строку не нужно. */
   isItemSizeFixed(key: string): boolean {
     return this.metrics.hasFixedSize(key);

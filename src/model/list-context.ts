@@ -8,6 +8,8 @@ import type { ListStore } from "./list-store";
 export interface IAnchorListRuntimeHandle {
   /** Элемент данных по индексу; undefined — индекс вне данных. */
   getItemAt: (index: number) => unknown;
+  /** Ключ элемента по индексу; undefined — индекс вне данных. */
+  getItemKeyAt: (index: number) => string | undefined;
   /** Принять замер строки по ключу. */
   setItemSize: (key: string, size: number) => void;
   /** Принять замер, только пока контейнер всё ещё рисует указанный ключ. */

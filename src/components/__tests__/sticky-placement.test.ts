@@ -117,7 +117,13 @@ describe("resolveOverlayRenderer", () => {
       renderItem,
     );
 
-    render?.({ item: "элемент", index: 7, type: "", extraData: undefined });
+    render?.({
+      item: "элемент",
+      index: 7,
+      itemKey: "7",
+      type: "",
+      extraData: undefined,
+    });
 
     expect(renderOverlay).toHaveBeenCalledWith("элемент", 7);
   });

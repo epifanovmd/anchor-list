@@ -39,6 +39,7 @@
 interface IAnchorListRenderItemProps<TItem> {
   item: TItem;
   index: number;
+  itemKey: string;
   type: string;
   extraData: unknown;
   stickyOffset?: SharedValue<number>;
@@ -50,6 +51,7 @@ interface IAnchorListRenderItemProps<TItem> {
 | --- | --- |
 | `item` | Сам элемент |
 | `index` | Индекс в **текущих** данных: после подгрузки сверху он у элемента другой |
+| `itemKey` | Ключ из `keyExtractor`. Им адресуют состояние строки во внешнем сторе — в отличие от `index`, он у элемента не меняется |
 | `type` | Значение, вернувшееся из `getItemType`; пустая строка, если проп не задан |
 | `extraData` | Значение пропа `extraData` |
 | `stickyOffset` | Смещение прилипания для якорей в режиме `offset`; у остальных строк — `0`. Живёт на UI-потоке, применять через `useAnimatedStyle` |
