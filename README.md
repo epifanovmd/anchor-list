@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@epifanovmd/anchor-list.svg)](https://www.npmjs.com/package/@epifanovmd/anchor-list)
 [![CI](https://github.com/epifanovmd/anchor-list/actions/workflows/ci.yml/badge.svg)](https://github.com/epifanovmd/anchor-list/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@epifanovmd/anchor-list.svg)](LICENSE)
+[![license](https://img.shields.io/github/license/epifanovmd/anchor-list.svg)](LICENSE)
 [![platforms](https://img.shields.io/badge/platforms-ios%20%7C%20android-lightgrey.svg)](docs/installation.md#платформы)
 
 **Виртуализированный список для React Native, рассчитанный на ленты, которые
