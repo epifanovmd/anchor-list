@@ -64,9 +64,11 @@ export const formatListPerfReport = ({
       `  диапазон  ${counters.rangeCalc} пересчётов · ${pair(
         stats.rangeMs,
         2,
-      )}мс · слито ${counters.passDeferred}+${counters.passMerged} · окно ${avg(
-        stats.windowItems,
-      ).toFixed(0)} · контейнеров ${stats.containers.max}`,
+      )}мс · слито ${counters.passDeferred}+${counters.passMerged} · без запаса ${
+        counters.passOverrun
+      } · окно ${avg(stats.windowItems).toFixed(
+        0,
+      )} · контейнеров ${stats.containers.max}`,
     );
   }
 
@@ -121,7 +123,7 @@ export const formatListPerfReport = ({
 
   if (counters.mvcpCapture > 0 || counters.mvcpRestore > 0) {
     lines.push(
-      `  mvcp      ${counters.mvcpCapture} захватов · ${counters.mvcpRestore} восстановлений (данные ${counters.mvcpByData} / размер ${counters.mvcpBySize}) · сдвиг ${pair(
+      `  mvcp      ${counters.mvcpCapture} захватов · ${counters.mvcpRestore} восстановлений (данные ${counters.mvcpByData} / размер ${counters.mvcpBySize}) · второй проход ${counters.mvcpSecondPass} · сдвиг ${pair(
         stats.mvcpShiftPx,
         0,
       )}px`,

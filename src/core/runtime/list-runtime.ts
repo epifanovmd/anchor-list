@@ -535,9 +535,12 @@ export class ListRuntime<TItem> {
 
     // На скрабе слияние вредит: проход стоит доли миллисекунды, а каждый
     // пропущенный оставляет на экране картинку, отставшую на несколько экранов.
+    const overrunning = isOverrunning(this.velocity.get(), this.scrollLength);
+
+    if (overrunning) listPerf.count("passOverrun");
+
     const deferred =
-      !isOverrunning(this.velocity.get(), this.scrollLength) &&
-      shouldDeferScrollPass(Date.now() - this.lastPassAt);
+      !overrunning && shouldDeferScrollPass(Date.now() - this.lastPassAt);
 
     if (deferred) {
       listPerf.count("passDeferred");
@@ -927,7 +930,14 @@ export class ListRuntime<TItem> {
     // Второй проход нужен, только если сдвиг разошёлся с предсказанным. Чаще
     // всего он совпадает — измерение ниже якоря его не двигает вовсе, — и
     // повторный проход слово в слово повторил бы уже опубликованную раскладку.
-    if (this.scroll !== predicted) this.calculateItemsInView();
+    //
+    // Считается отдельно: это самый дорогой из проходов — полная привязка всего
+    // буферизованного набора вторым разом за один flush, — и по общим числам он
+    // не отделяется от проходов, вызванных событиями скролла.
+    if (this.scroll !== predicted) {
+      listPerf.count("mvcpSecondPass");
+      this.calculateItemsInView();
+    }
 
     this.restoring = false;
   }

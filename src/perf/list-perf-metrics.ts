@@ -4,6 +4,7 @@ export type ListPerfCounter =
   | "rangeCalc"
   | "passDeferred"
   | "passMerged"
+  | "passOverrun"
   | "bind"
   | "bindCached"
   | "bindSkipped"
@@ -16,6 +17,7 @@ export type ListPerfCounter =
   | "flush"
   | "mvcpCapture"
   | "mvcpRestore"
+  | "mvcpSecondPass"
   | "mvcpByData"
   | "mvcpBySize"
   | "mvcpClamped"
@@ -52,6 +54,7 @@ const COUNTERS: ListPerfCounter[] = [
   "rangeCalc",
   "passDeferred",
   "passMerged",
+  "passOverrun",
   "bind",
   "bindCached",
   "bindSkipped",
@@ -64,6 +67,7 @@ const COUNTERS: ListPerfCounter[] = [
   "flush",
   "mvcpCapture",
   "mvcpRestore",
+  "mvcpSecondPass",
   "mvcpByData",
   "mvcpBySize",
   "mvcpClamped",

@@ -50,6 +50,30 @@ describe("formatListPerfReport", () => {
     expect(text).toContain("пустоты   нет");
   });
 
+  it("печатает, сколько проходов шло без запаса по скорости", () => {
+    const text = report(window => {
+      window.counters.rangeCalc = 4;
+      window.counters.passOverrun = 12;
+      window.stats.rangeMs = { count: 4, sum: 2, max: 0.8 };
+      window.stats.windowItems = { count: 4, sum: 40, max: 11 };
+      window.stats.containers = { count: 4, sum: 100, max: 27 };
+    });
+
+    expect(text).toContain("без запаса 12");
+  });
+
+  it("отделяет второй проход компенсации от остальных", () => {
+    const text = report(window => {
+      window.counters.mvcpCapture = 24;
+      window.counters.mvcpRestore = 25;
+      window.counters.mvcpBySize = 24;
+      window.counters.mvcpSecondPass = 18;
+      window.stats.mvcpShiftPx = { count: 25, sum: 100, max: 96 };
+    });
+
+    expect(text).toContain("второй проход 18");
+  });
+
   it("нормирует рендеры на пройденное расстояние", () => {
     const text = report(window => {
       window.counters.renderItem = 40;
