@@ -6,6 +6,8 @@
  * до следующего скролла, а вместе с ним — блокировка порогов кромок.
  */
 const CONFIRM_TIMEOUT_MS = 250;
+/** Допуск нативного округления contentOffset у границы кандидатов, px. */
+const CANDIDATE_EPSILON = 1;
 
 /**
  * Очередь применённых, но ещё не подтверждённых сдвигов.
@@ -60,8 +62,8 @@ export class ShiftQueue {
    *
    * Событие относится к ближайшей из возможных промежуточных позиций — от
    * прежнего смещения до полностью применённого. Всё, что до неё, считается
-   * подтверждённым. Порогов здесь нет: при живом жесте смещение уезжает от всех
-   * кандидатов одинаково, а разделяет их величина сдвигов.
+   * подтверждённым. Смещение вне коридора кандидатов — уже живой жест: ждать,
+   * пока палец пройдёт всю величину компенсации, нельзя.
    *
    * @returns true, если событие нужно отбросить.
    */
@@ -71,11 +73,13 @@ export class ShiftQueue {
     let candidate = this.base;
     let bestDistance = Math.abs(offset - candidate);
     let confirmed = 0;
-    let total = 0;
+    let minCandidate = candidate;
+    let maxCandidate = candidate;
 
     for (let index = 0; index < this.queue.length; index++) {
-      total += this.queue[index]!;
       candidate += this.queue[index]!;
+      minCandidate = Math.min(minCandidate, candidate);
+      maxCandidate = Math.max(maxCandidate, candidate);
 
       const distance = Math.abs(offset - candidate);
 
@@ -85,10 +89,13 @@ export class ShiftQueue {
       confirmed = index + 1;
     }
 
-    // Смещение ушло дальше любой из ожидаемых позиций — это уже не эхо сдвига,
-    // а живой жест. Держать его за устаревшее — значит заморозить диапазон
-    // отрисовки под пальцем.
-    if (bestDistance > Math.abs(total)) {
+    // Нативная компенсация может поставить offset только в одну из позиций
+    // между базой и применёнными сдвигами. Выход из этого коридора — движение
+    // пользователя, даже если палец прошёл меньше самой компенсации.
+    if (
+      offset < minCandidate - CANDIDATE_EPSILON ||
+      offset > maxCandidate + CANDIDATE_EPSILON
+    ) {
       this.clear();
       this.base = offset;
 

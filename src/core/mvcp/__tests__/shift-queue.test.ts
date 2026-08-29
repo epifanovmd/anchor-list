@@ -115,6 +115,26 @@ describe("ShiftQueue — живой жест", () => {
     expect(queue.isStale(200)).toBe(false);
   });
 
+  it("не замораживает небольшой жест в обратную сторону", () => {
+    const queue = new ShiftQueue();
+
+    queue.push(300, 1000);
+
+    // 950 уже вне коридора нативной компенсации 1000…1300. Прежняя эвристика
+    // всё равно отбрасывала событие, пока палец не проходил больше 300px.
+    expect(queue.isStale(950)).toBe(false);
+    expect(queue.isSettling()).toBe(false);
+  });
+
+  it("не принимает нативное округление у границы за живой жест", () => {
+    const queue = new ShiftQueue();
+
+    queue.push(300, 1000);
+
+    expect(queue.isStale(999.6)).toBe(true);
+    expect(queue.isSettling()).toBe(true);
+  });
+
   it("после ухода вперёд принимает следующие события", () => {
     const queue = new ShiftQueue();
 
