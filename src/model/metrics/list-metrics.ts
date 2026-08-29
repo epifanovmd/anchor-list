@@ -72,10 +72,16 @@ export class ListMetrics {
     const index = this.index.getIndexByKey(key);
     const type = index === undefined ? "" : this.index.getType(index);
     const before = index === undefined ? 0 : this.getSize(index);
+    // До первого замера типа его строки оценены догадкой из пропа. Этот замер
+    // задаёт им среднее — размеры меняются разом по всему списку, и кэш позиций
+    // обязан узнать об этом явно: молча изменившийся размер он бы не заметил.
+    const firstOfType = !this.sizes.hasAverage(type);
 
     if (!this.sizes.setMeasured(key, size, type)) return false;
 
     this.applyResize(index, before);
+
+    if (firstOfType) this.positions.markDirty(0);
 
     return true;
   }

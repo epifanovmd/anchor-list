@@ -132,23 +132,42 @@ describe("ItemSizes — ожидание первого измерения", () 
 });
 
 describe("ItemSizes — замороженная оценка", () => {
-  it("не меняет выданную оценку при уточнении среднего", () => {
-    const sizes = new ItemSizes({ estimatedItemSize: 100 });
-
-    expect(sizes.resolve("b", "row")).toBe(100);
-
-    sizes.setMeasured("a", 300, "row");
-
-    // Иначе строка переезжает от чужого измерения, ни разу не отрисовавшись.
-    expect(sizes.resolve("b", "row")).toBe(100);
-  });
-
   it("новому ключу отдаёт накопленное среднее", () => {
     const sizes = new ItemSizes({ estimatedItemSize: 100 });
 
     sizes.setMeasured("a", 300, "row");
 
     expect(sizes.resolve("b", "row")).toBe(300);
+  });
+
+  it("не запоминает догадку, выданную до первых замеров типа", () => {
+    // Первый проход раскладки спрашивает размер у всех строк сразу — замеров в
+    // этот момент нет ни одного. Запомни выданную догадку — и накопленное
+    // среднее не достанется никому: строка с фотографией так и будет отводить
+    // себе высоту строки текста, а на её появлении контент дёрнется на разницу.
+    const sizes = new ItemSizes({ estimatedItemSize: 100 });
+
+    expect(sizes.resolve("photo2", "photo")).toBe(100);
+
+    sizes.setMeasured("photo1", 300, "photo");
+
+    expect(sizes.resolve("photo2", "photo")).toBe(300);
+  });
+
+  it("не меняет оценку, посчитанную от среднего", () => {
+    // Среднее уточняется с каждым замером, и без заморозки каждое измерение
+    // переставляло бы разом все неизмеренные строки.
+    const sizes = new ItemSizes({ estimatedItemSize: 100 });
+
+    sizes.setMeasured("a", 300, "row");
+
+    expect(sizes.resolve("b", "row")).toBe(300);
+
+    sizes.setMeasured("c", 100, "row");
+
+    // Среднее уехало на 200, но выданная оценка держится.
+    expect(sizes.resolve("b", "row")).toBe(300);
+    expect(sizes.resolve("d", "row")).toBe(200);
   });
 
   it("измерение отменяет оценку", () => {

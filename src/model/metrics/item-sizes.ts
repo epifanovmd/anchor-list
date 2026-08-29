@@ -116,6 +116,11 @@ export class ItemSizes {
     return true;
   }
 
+  /** По этому типу уже есть замеры: оценка считается от них, а не от пропа. */
+  hasAverage(type: string): boolean {
+    return this.averages.get(type) !== undefined;
+  }
+
   /** Размер известен точно: измерен или объявлен пропом. */
   isKnown(key: string): boolean {
     return this.measured.has(key) || this.fixed.has(key);
@@ -192,10 +197,18 @@ export class ItemSizes {
 
     if (estimate !== undefined) return estimate;
 
-    const fresh = this.averages.get(type) ?? this.estimatedItemSize;
+    const average = this.averages.get(type);
 
-    this.estimates.set(key, fresh);
+    // Замеров этого типа ещё не было: отданное сейчас — догадка из пропа, одна
+    // на весь список. Запомнить её значит выдать её навсегда: первый проход
+    // раскладки спрашивает размер у всех строк сразу, и накопленное потом
+    // среднее не досталось бы никому — строка с фотографией так и отводила бы
+    // себе высоту строки текста, а на её появлении контент дёргался бы на
+    // разницу.
+    if (average === undefined) return this.estimatedItemSize;
 
-    return fresh;
+    this.estimates.set(key, average);
+
+    return average;
   }
 }
