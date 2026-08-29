@@ -38,9 +38,14 @@ export interface IKeyboardInset {
    * собой гасить — иначе между строкой ввода и клавишами остаётся пустая полоса.
    */
   keyboardHeight: SharedValue<number>;
-  /** Перекрытие при закрытой клавиатуре: панель плюс безопасная зона. */
-  closedInset: SharedValue<number>;
-  /** Полное перекрытие — оно и уходит списку в `insetEnd`. */
+  /**
+   * Полное перекрытие, не знающее о заморозке.
+   *
+   * Его берут те, кто едет с клавиатурой всегда: сама панель ввода и всё, что
+   * держится над ней.
+   */
+  liveInset: SharedValue<number>;
+  /** Полное перекрытие с учётом заморозки — оно уходит списку в `insetEnd`. */
   contentInset: SharedValue<number>;
 }
 
@@ -88,7 +93,7 @@ export const useKeyboardInset = ({
   );
 
   return useMemo(
-    () => ({ occludedBottom, keyboardHeight, closedInset, contentInset }),
-    [occludedBottom, keyboardHeight, closedInset, contentInset],
+    () => ({ occludedBottom, keyboardHeight, liveInset, contentInset }),
+    [occludedBottom, keyboardHeight, liveInset, contentInset],
   );
 };

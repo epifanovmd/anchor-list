@@ -158,8 +158,10 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
             клавиатурой. Отступ берётся живой, а не зарезервированный: резерв
             прыгает к цели сразу, и кнопка уехала бы вверх раньше клавиатуры, а
             при закрытии повисла бы наверху до конца анимации. */}
+        {/* Живое перекрытие: кнопка держится над панелью ввода, а та едет с
+            клавиатурой и с выключенной компенсацией. */}
         <JumpToEndButton
-          bottomInset={keyboard.contentInset}
+          bottomInset={keyboard.liveInset}
           isAtEnd={isAtEnd}
           onPress={handleJumpToEnd}
         />
