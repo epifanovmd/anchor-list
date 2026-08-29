@@ -28,6 +28,12 @@ export class ListStore {
     string,
     Set<(value: number) => void>
   >();
+  /** Глубина атомарной публикации; вложенные проходы входят в ту же пачку. */
+  private batchDepth = 0;
+  /** Последнее значение каждого изменённого сигнала текущей пачки. */
+  private readonly pendingSignals = new Map<AnchorListSignalName, unknown>();
+  /** Последняя позиция каждого ключа текущей пачки. */
+  private readonly pendingPositions = new Map<string, number>();
 
   /** Текущее значение без подписки — для расчётного цикла. */
   peek<TName extends AnchorListSignalName>(
@@ -45,6 +51,38 @@ export class ListStore {
 
     this.values.set(name, value);
 
+    if (this.batchDepth > 0) {
+      this.pendingSignals.set(name, value);
+
+      return;
+    }
+
+    this.notifySignal(name, value);
+  }
+
+  /**
+   * Атомарно опубликовать несколько связанных сигналов.
+   *
+   * Значения доступны ядру через {@link peek} сразу, но React-подписчики
+   * просыпаются только после последней записи. Поэтому позиции контейнеров и
+   * компенсирующий `scrollAdjust` не могут попасть в разные снимки экрана.
+   */
+  batch<T>(run: () => T): T {
+    this.batchDepth += 1;
+
+    try {
+      return run();
+    } finally {
+      this.batchDepth -= 1;
+
+      if (this.batchDepth === 0) this.flushPending();
+    }
+  }
+
+  private notifySignal<TName extends AnchorListSignalName>(
+    name: TName,
+    value: AnchorListSignalMap[TName],
+  ): void {
     const listeners = this.listeners.get(name);
 
     if (!listeners) return;
@@ -99,12 +137,47 @@ export class ListStore {
 
   /** Сообщить подписчикам ключа его новую позицию. */
   notifyPosition(key: string, value: number): void {
+    if (this.batchDepth > 0) {
+      this.pendingPositions.set(key, value);
+
+      return;
+    }
+
+    this.notifyPositionNow(key, value);
+  }
+
+  private notifyPositionNow(key: string, value: number): void {
     const listeners = this.positionListeners.get(key);
 
     if (!listeners) return;
 
     for (const listener of listeners) {
       listener(value);
+    }
+  }
+
+  /** Разбудить подписчиков уже после того, как весь снимок стал согласованным. */
+  private flushPending(): void {
+    // Уведомления сами могут записать сигнал. Считаем их продолжением той же
+    // транзакции и выпускаем следующей волной, а не посреди текущей.
+    while (this.pendingSignals.size > 0 || this.pendingPositions.size > 0) {
+      const signals = [...this.pendingSignals.entries()];
+      const positions = [...this.pendingPositions.entries()];
+
+      this.pendingSignals.clear();
+      this.pendingPositions.clear();
+      this.batchDepth += 1;
+
+      try {
+        for (const [name, value] of signals) {
+          this.notifySignal(name, value as never);
+        }
+        for (const [key, value] of positions) {
+          this.notifyPositionNow(key, value);
+        }
+      } finally {
+        this.batchDepth -= 1;
+      }
     }
   }
 }

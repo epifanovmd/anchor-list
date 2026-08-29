@@ -91,6 +91,38 @@ describe("ListStore", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
+  it("не показывает подписчикам промежуточное состояние транзакции", () => {
+    const store = new ListStore();
+    const snapshots: Array<[number | undefined, number | undefined]> = [];
+
+    store.listen("containerPosition0", () => {
+      snapshots.push([
+        store.peek("containerPosition0"),
+        store.peek("scrollAdjust"),
+      ]);
+    });
+    store.listen("scrollAdjust", () => {
+      snapshots.push([
+        store.peek("containerPosition0"),
+        store.peek("scrollAdjust"),
+      ]);
+    });
+
+    store.batch(() => {
+      store.set("containerPosition0", 1100);
+      // До этой записи позиция уже новая, а компенсация ещё старая. Такой
+      // снимок между двумя React-коммитами и виден как рывок.
+      store.set("scrollAdjust", 100);
+
+      expect(snapshots).toEqual([]);
+    });
+
+    expect(snapshots).toEqual([
+      [1100, 100],
+      [1100, 100],
+    ]);
+  });
+
   it("уведомляет о позиции по ключу элемента", () => {
     const store = new ListStore();
     const listener = jest.fn();
