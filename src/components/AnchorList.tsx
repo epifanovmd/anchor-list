@@ -6,6 +6,7 @@ import React, {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
 import Animated, {
@@ -245,15 +246,37 @@ const AnchorListInner = <TItem,>(
   // Подписки снаружи могли завестись раньше списка — стор им отдаётся здесь.
   useEffect(() => state?.attach(store), [state, store]);
 
+  /**
+   * Список показан: доводка стартовой позиции кончилась.
+   *
+   * Сигнал из стора, а не состояние React: его ставит ядро в момент показа, и
+   * ждать лишнего рендера здесь нельзя.
+   */
+  const revealed = useSyncExternalStore(
+    useCallback(
+      (onChange: () => void) => store.listen("readyToRender", onChange),
+      [store],
+    ),
+    () => store.peek("readyToRender") ?? false,
+  );
+
   // Компенсацию делает сам ScrollView: программный скролл посреди жеста гасит
   // и жест, и инерцию.
+  //
+  // Пока идёт доводка стартовой позиции, компенсация выключена. Она держит
+  // видимое на месте, когда контент над ним растёт, — а доводка в это же время
+  // считает абсолютную цель по тем же самым замерам. Оба сдвига складываются:
+  // список встаёт на доли точки ниже просимого, снимок позиции запоминает
+  // промах, и следующее открытие берёт его за цель. Абсолютным смещением до
+  // показа распоряжается кто-то один.
   const nativeMaintainVisibleContentPosition = useMemo(
     () =>
-      maintainVisibleContentPosition?.data ||
-      maintainVisibleContentPosition?.size
+      revealed &&
+      (maintainVisibleContentPosition?.data ||
+        maintainVisibleContentPosition?.size)
         ? { minIndexForVisible: 0 }
         : undefined,
-    [maintainVisibleContentPosition],
+    [maintainVisibleContentPosition, revealed],
   );
 
   // Позиции уточняются измерениями. Пересчитываем на каждом рендере списка:
