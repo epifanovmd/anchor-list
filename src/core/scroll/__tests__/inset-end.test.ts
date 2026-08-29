@@ -10,6 +10,7 @@ const OPEN = 392;
 const resolve = (params: {
   scroll?: number;
   previousInset?: number;
+  previousDelta?: number;
   insetEnd?: number;
   rows: number;
   alignItemsAtEnd?: boolean;
@@ -17,6 +18,7 @@ const resolve = (params: {
   resolveInsetEnd({
     scroll: params.scroll ?? 0,
     previousInset: params.previousInset ?? CLOSED,
+    previousDelta: params.previousDelta ?? 0,
     insetEnd: params.insetEnd ?? OPEN,
     baseHeight: params.rows,
     scrollLength: SCROLL_LENGTH,
@@ -95,12 +97,13 @@ describe("resolveInsetEnd", () => {
     expect(scroll).toBe(212);
   });
 
-  it("держит распорку впереди отступа, пока тот растёт", () => {
+  it("держит распорку впереди отступа, пока тот едет", () => {
     // Иначе у самого низа списка запрос обрезается по прежней границе: контент
     // отстаёт от клавиатуры ровно на кадр, и это видно.
     const { spacer } = resolve({
       rows: 5000,
       previousInset: 300,
+      previousDelta: 20,
       insetEnd: 320,
     });
 
@@ -109,13 +112,37 @@ describe("resolveInsetEnd", () => {
     // На закрытии запас не нужен: там граница только сжимается, и обрезать
     // нативному слою нечего.
     expect(
-      resolve({ rows: 5000, previousInset: 320, insetEnd: 300 }).spacer,
+      resolve({
+        rows: 5000,
+        previousInset: 320,
+        previousDelta: -20,
+        insetEnd: 300,
+      }).spacer,
     ).toBe(300);
 
     // И в коротком списке не нужен: подъём делает сдвиг, а прокручивать нечего.
     expect(
-      resolve({ rows: 100, previousInset: 90, insetEnd: 200 }).spacer,
+      resolve({
+        rows: 100,
+        previousInset: 90,
+        previousDelta: 20,
+        insetEnd: 200,
+      }).spacer,
     ).toBe(200);
+  });
+
+  it("не оставляет запаса после мгновенной смены отступа", () => {
+    // Тумблер и поворот экрана меняют отступ одним шагом: следующего кадра,
+    // который снял бы запас, не будет, и лишняя высота осталась бы в контенте
+    // навсегда — под открытой клавиатурой её видно пустотой.
+    const { spacer } = resolve({
+      rows: 5000,
+      previousInset: CLOSED,
+      previousDelta: 0,
+      insetEnd: OPEN,
+    });
+
+    expect(spacer).toBe(OPEN);
   });
 
   it("возвращает низ на кромку, если он там и стоял", () => {

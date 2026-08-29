@@ -78,8 +78,9 @@ export const useInsetEnd = ({
 }: IInsetEndOptions): IInsetEnd => {
   const alignOffset = useSharedValue(0);
   const spacer = useSharedValue(0);
-  /** Отступ, на котором посчитан прошлый кадр. */
+  /** Отступ, на котором посчитан прошлый кадр, и его тогдашняя дельта. */
   const appliedInset = useSharedValue(0);
+  const appliedDelta = useSharedValue(0);
   /** Первый кадр прошёл: до него сдвигать не от чего. */
   const seeded = useSharedValue(false);
   /** Смещение, на котором список настаивает, и признак «нативный не подтвердил». */
@@ -121,6 +122,7 @@ export const useInsetEnd = ({
       const layout = resolveInsetEnd({
         scroll: from,
         previousInset,
+        previousDelta: appliedDelta.value,
         insetEnd: inset,
         baseHeight: base,
         scrollLength: length,
@@ -135,6 +137,7 @@ export const useInsetEnd = ({
       // нового сообщения и от каждого замера строки.
       if (Math.abs(inset - previousInset) < INSET_END_EPSILON) return;
 
+      appliedDelta.value = inset - previousInset;
       appliedInset.value = inset;
       desiredScroll.value = layout.scroll;
       pending.value =
