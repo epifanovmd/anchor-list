@@ -256,9 +256,11 @@ const AnchorListInner = <TItem,>(
     [maintainVisibleContentPosition],
   );
 
-  const snapToOffsets = useMemo(
-    () => snapToIndices?.map(index => runtime.getPositionAtIndex(index) ?? 0),
-    [runtime, snapToIndices],
+  // Позиции уточняются измерениями. Пересчитываем на каждом рендере списка:
+  // мемоизация только по массиву индексов оставляла прежние оценочные offsets
+  // даже после смены данных или любой другой перерисовки владельца.
+  const snapToOffsets = snapToIndices?.map(
+    index => runtime.getPositionAtIndex(index) ?? 0,
   );
 
   const handleContentSizeChange = useCallback(
