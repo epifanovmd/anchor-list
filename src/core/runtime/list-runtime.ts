@@ -239,6 +239,9 @@ export class ListRuntime<TItem> {
       // стартовой позиции — переезд списка, а не движение пользователя.
       scrollToOffset: offset => this.programmatic.toOffset(offset, false),
       isTargetSettled: () => this.initialOffset.isSettled(),
+      // Живое смещение, а не событие: доводка идёт по кадрам, а событие о
+      // прошлой команде могло ещё не дойти — по нему список «не доехал» всегда.
+      getLiveOffset: () => this.adapter?.getOffset?.(),
       describeTarget: () => this.initialOffset.describe(),
       onFinished: () => {
         this.store.set("readyToRender", true);

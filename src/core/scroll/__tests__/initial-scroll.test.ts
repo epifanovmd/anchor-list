@@ -11,6 +11,7 @@ const createScroll = (
   overrides: {
     resolveOffset?: () => number | undefined;
     isTargetSettled?: () => boolean;
+    getLiveOffset?: () => number | undefined;
   } = {},
 ) => {
   const scrollToOffset = jest.fn();
@@ -20,6 +21,7 @@ const createScroll = (
     resolveOffset: overrides.resolveOffset ?? (() => 500),
     scrollToOffset,
     isTargetSettled: overrides.isTargetSettled ?? (() => true),
+    getLiveOffset: overrides.getLiveOffset,
     onFinished,
   });
 
@@ -142,6 +144,46 @@ describe("InitialScroll", () => {
     flushFrames(1);
     expect(scrollToOffset).toHaveBeenCalledTimes(2);
     expect(onFinished).not.toHaveBeenCalled();
+  });
+
+  it("не показывает список, пока нативный скролл не доехал до цели", () => {
+    // Цель может перестать уезжать раньше, чем список до неё добрался: команду
+    // перебивает нативная компенсация замеров, а обрезать её может и граница
+    // контента. Показать список по одной только устаканившейся цели — значит
+    // открыть его не там, где просили, и больше уже не поправить: после показа
+    // доводка не возвращается.
+    let live = 0;
+    const { scroll, scrollToOffset, onFinished } = createScroll(
+      { type: "index", index: 12 },
+      { getLiveOffset: () => live },
+    );
+
+    scroll.apply();
+    flushFrames(4);
+
+    expect(onFinished).not.toHaveBeenCalled();
+    // Каждый кадр команда повторяется — иначе поправить уехавшую позицию нечем.
+    expect(scrollToOffset.mock.calls.length).toBeGreaterThan(2);
+    expect(scrollToOffset).toHaveBeenLastCalledWith(500);
+
+    live = 500;
+    flushFrames(1);
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("считает доездом попадание в пределах кванта нативного смещения", () => {
+    // Нативное смещение квантовано плотностью экрана: требовать точного
+    // равенства значит не сойтись никогда и показать список по страховке.
+    const { scroll, onFinished } = createScroll(
+      { type: "index", index: 12 },
+      { getLiveOffset: () => 499.7 },
+    );
+
+    scroll.apply();
+    flushFrames(1);
+
+    expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
   it("не раскрывает список по числу кадров, пока цель не готова", () => {

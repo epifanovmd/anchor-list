@@ -1,6 +1,15 @@
 import { anchorListInitialScrollDebug } from "../../debug/initial-scroll-debug";
 import type { AnchorListInitialScroll } from "../../types";
 
+/**
+ * Допуск попадания в цель, px.
+ *
+ * Нативное смещение квантовано плотностью экрана — на 3× это трети точки, — и
+ * точного равенства не будет никогда. Полточки: больше кванта и меньше того,
+ * что заметно глазом.
+ */
+const ARRIVAL_EPSILON = 0.5;
+
 /** Зависимости начального скролла. */
 export interface IInitialScrollOptions {
   getTarget: () => AnchorListInitialScroll | undefined;
@@ -10,6 +19,8 @@ export interface IInitialScrollOptions {
   scrollToOffset: (offset: number) => boolean | void;
   /** Все элементы до цели измерены — позиция больше не уедет. */
   isTargetSettled: () => boolean;
+  /** Живое нативное смещение — по нему видно, доехала ли прошлая команда. */
+  getLiveOffset?: () => number | undefined;
   /** Из чего сложилась цель — печатается диагностикой. */
   describeTarget?: () => Record<string, unknown>;
   onFinished: () => void;
@@ -25,6 +36,12 @@ export interface IInitialScrollOptions {
  * пользователя. Конечное ожидание обеспечивает страховка первого показа по
  * времени, а не число кадров: нативный commit может не успеть за десять rAF.
  *
+ * Устаканившейся цели мало: команда могла и не доехать — её перебивает нативная
+ * компенсация замеров и обрезает граница контента. Поэтому каждая попытка
+ * сверяет живое смещение с тем, что просила прошлая, и повторяет команду, пока
+ * список не окажется там, где просили: после показа доводка не возвращается, и
+ * поправить позицию будет уже нечем.
+ *
  * Пока начальный скролл активен, пороги кромок не проверяются: иначе открытие
  * списка у конца сразу же вызывает подгрузку.
  */
@@ -34,6 +51,8 @@ export class InitialScroll {
   private finished = false;
   private attempts = 0;
   private scheduledFrame: number | undefined;
+  /** Смещение, которое просила прошлая попытка. */
+  private lastApplied: number | undefined;
 
   constructor(options: IInitialScrollOptions) {
     this.options = options;
@@ -79,11 +98,19 @@ export class InitialScroll {
 
     this.attempts += 1;
 
-    const settled = this.options.isTargetSettled();
+    // Проверяется прошлая команда, а не эта: нативный слой применяет смещение
+    // не в вызове, и сразу после него живое значение — ещё старое.
+    const live = this.options.getLiveOffset?.();
+    const arrived = this.hasArrived(live);
+    const settled = arrived && this.options.isTargetSettled();
+
+    this.lastApplied = offset;
 
     anchorListInitialScrollDebug.log("apply", {
       attempt: this.attempts,
       offset,
+      live,
+      arrived,
       settled,
       ...this.options.describeTarget?.(),
     });
@@ -104,6 +131,20 @@ export class InitialScroll {
       this.scheduledFrame = undefined;
       this.apply();
     });
+  }
+
+  /**
+   * Список стоит там, куда его звала прошлая попытка.
+   *
+   * Первая попытка непроверяема — нативному слою нечего было применять; список
+   * без живого смещения не проверяется вовсе.
+   */
+  private hasArrived(live: number | undefined): boolean {
+    if (this.options.getLiveOffset === undefined) return true;
+    if (live === undefined) return true;
+    if (this.lastApplied === undefined) return false;
+
+    return Math.abs(live - this.lastApplied) < ARRIVAL_EPSILON;
   }
 
   /** Прекратить доводку и показать список. */
