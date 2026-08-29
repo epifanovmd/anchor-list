@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedProps,
   useAnimatedRef,
@@ -17,6 +17,7 @@ import Animated, {
 import { createRuntimeProps, ListRuntime } from "../core";
 import {
   useEdgeSharedValues,
+  useInsetEnd,
   useListScrollHandler,
   useListSharedValues,
 } from "../hooks";
@@ -30,6 +31,7 @@ import type {
 import { renderListSlot } from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
+import { ListInsetEndSpace } from "./ListInsetEndSpace";
 import { ListScrollAdjust } from "./ListScrollAdjust";
 import { ListStickyOverlay } from "./ListStickyOverlay";
 import { getScrollIndicatorInsets } from "./scroll-indicator";
@@ -50,6 +52,14 @@ import { withEdgeInset } from "./sticky-placement";
  * шлюзами компромисс не нужен.
  */
 const SCROLL_EVENT_THROTTLE = 1;
+/**
+ * Как свайп по списку закрывает клавиатуру.
+ *
+ * `interactive` iOS ведёт покадрово вместе с пальцем, и нижний отступ приходит
+ * тем же кадром — контент едет за клавиатурой без рывка. На Android такого
+ * режима нет, там ближайшее — закрыть по началу жеста.
+ */
+const KEYBOARD_DISMISS_MODE = Platform.OS === "ios" ? "interactive" : "on-drag";
 
 /**
  * Виртуализированный список.
@@ -87,6 +97,38 @@ const AnchorListInner = <TItem,>(
     onScrollEndDrag,
   } = props;
 
+  const innerScrollRef = useAnimatedRef<Animated.ScrollView>();
+  const scrollRef = refScrollView ?? innerScrollRef;
+  const scrollOffset = useSharedValue(0);
+  const edgeContentSize = useSharedValue(0);
+  const edgeScrollLength = useSharedValue(0);
+  const edgeEndSpace = useSharedValue(0);
+  const edgeTotalSize = useSharedValue(0);
+  const edgeHeaderSize = useSharedValue(0);
+  const edgeFooterSize = useSharedValue(0);
+  // Фаза жеста. Своя, а не та, что просят наружу: раскладка нижнего отступа
+  // обязана уступать жесту и без чужой подписки.
+  const isDragging = useSharedValue(false);
+  const isMomentum = useSharedValue(false);
+  // Якоря, которые слой прилипших копий уже нарисовал: -1 — копии нет.
+  const pinnedStartIndex = useSharedValue(-1);
+  const pinnedEndIndex = useSharedValue(-1);
+
+  const insetEndLayout = useInsetEnd({
+    insetEnd,
+    alignItemsAtEnd: props.alignItemsAtEnd ?? false,
+    totalSize: edgeTotalSize,
+    headerSize: edgeHeaderSize,
+    footerSize: edgeFooterSize,
+    anchoredEndSpaceSize: edgeEndSpace,
+    scrollLength: edgeScrollLength,
+    contentSize: edgeContentSize,
+    scrollRef,
+    scrollOffset,
+    isDragging,
+    isMomentum,
+  });
+
   /**
    * Наборы прилипания с подставленным отступом конечной кромки.
    *
@@ -111,16 +153,6 @@ const AnchorListInner = <TItem,>(
   useLayoutEffect(() => {
     runtime.setProps(runtimeProps);
   });
-
-  const innerScrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollRef = refScrollView ?? innerScrollRef;
-  const scrollOffset = useSharedValue(0);
-  const edgeContentSize = useSharedValue(0);
-  const edgeScrollLength = useSharedValue(0);
-  const edgeEndSpace = useSharedValue(0);
-  // Якоря, которые слой прилипших копий уже нарисовал: -1 — копии нет.
-  const pinnedStartIndex = useSharedValue(-1);
-  const pinnedEndIndex = useSharedValue(-1);
 
   useEffect(() => {
     runtime.setAdapter({
@@ -189,8 +221,18 @@ const AnchorListInner = <TItem,>(
       contentSize: edgeContentSize,
       scrollLength: edgeScrollLength,
       anchoredEndSpaceSize: edgeEndSpace,
+      totalSize: edgeTotalSize,
+      headerSize: edgeHeaderSize,
+      footerSize: edgeFooterSize,
     }),
-    [edgeContentSize, edgeScrollLength, edgeEndSpace],
+    [
+      edgeContentSize,
+      edgeScrollLength,
+      edgeEndSpace,
+      edgeTotalSize,
+      edgeHeaderSize,
+      edgeFooterSize,
+    ],
   );
 
   useListSharedValues(store, scrollOffset, edgeGeometry);
@@ -270,9 +312,9 @@ const AnchorListInner = <TItem,>(
     [runtime],
   );
 
-  // Индикатор скролла живёт в координатах ScrollView и о распорке в подвале не
-  // знает: без этого отступа он доходит до кромки экрана, а контент — только до
-  // панели ввода.
+  // Индикатор скролла живёт в координатах ScrollView и о распорке отступа не
+  // знает: без инсета он доходит до кромки экрана, а контент — только до панели
+  // ввода.
   const scrollIndicatorProps = useAnimatedProps(() => ({
     scrollIndicatorInsets: getScrollIndicatorInsets(insetEnd?.value ?? 0),
   }));
@@ -280,8 +322,10 @@ const AnchorListInner = <TItem,>(
   const scrollHandler = useListScrollHandler({
     scrollOffset,
     publishedScrollOffset: sharedValues?.scrollOffset,
-    isDragging: sharedValues?.isDragging,
-    isMomentum: sharedValues?.isMomentum,
+    isDragging,
+    publishedIsDragging: sharedValues?.isDragging,
+    isMomentum,
+    publishedIsMomentum: sharedValues?.isMomentum,
     onScroll: updateScroll,
     scrollThrottleDistance,
     onBeginDrag: handleScrollBeginDrag,
@@ -308,6 +352,7 @@ const AnchorListInner = <TItem,>(
           maintainVisibleContentPosition={nativeMaintainVisibleContentPosition}
           snapToOffsets={snapToOffsets}
           animatedProps={insetEnd ? scrollIndicatorProps : undefined}
+          keyboardDismissMode={KEYBOARD_DISMISS_MODE}
           // iOS сам добавляет safe area к инсетам индикатора, а она уже входит
           // в отступ — авто-подстройка давала бы двойной.
           automaticallyAdjustsScrollIndicatorInsets={!insetEnd}
@@ -328,6 +373,7 @@ const AnchorListInner = <TItem,>(
               renderItem={renderItemUntyped}
               extraData={extraData}
               ItemSeparatorComponent={ItemSeparatorComponent}
+              alignOffset={insetEndLayout.alignOffset}
             />
           )}
 
@@ -336,6 +382,10 @@ const AnchorListInner = <TItem,>(
           <View onLayout={handleFooterLayout}>
             {renderListSlot(ListFooterComponent)}
           </View>
+
+          {insetEnd ? (
+            <ListInsetEndSpace height={insetEndLayout.spacer} />
+          ) : null}
         </Animated.ScrollView>
 
         <ListStickyOverlay

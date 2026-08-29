@@ -101,7 +101,6 @@ const shadowStyle = useAnimatedStyle(() => ({
 | `scrollSize` | `{ width, height }` | Размер вьюпорта целиком |
 | `headerSize` | `number` | Высота шапки |
 | `footerSize` | `number` | Высота подвала |
-| `alignItemsAtEndPadding` | `number` | Распорка, прижимающая короткий контент к концу |
 | `anchoredEndSpaceSize` | `number` | Распорка у конца, поднимающая якорный элемент к верхней кромке |
 
 Прогресс прокрутки — это `scrollOffset / maxScroll`:

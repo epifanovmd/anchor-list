@@ -26,7 +26,6 @@ describe("createRuntimeProps — значения по умолчанию", () =
     expect(props.startReachedThreshold).toBe(0.5);
     expect(props.endReachedThreshold).toBe(0.5);
     expect(props.maintainScrollAtEndThreshold).toBe(0.1);
-    expect(props.alignItemsAtEnd).toBe(false);
     expect(props.recycleItems).toBe(false);
   });
 
@@ -37,7 +36,6 @@ describe("createRuntimeProps — значения по умолчанию", () =
         onStartReachedThreshold: 0.2,
         onEndReachedThreshold: 0.3,
         maintainScrollAtEndThreshold: 0.4,
-        alignItemsAtEnd: true,
       }),
     );
 
@@ -45,7 +43,6 @@ describe("createRuntimeProps — значения по умолчанию", () =
     expect(props.startReachedThreshold).toBe(0.2);
     expect(props.endReachedThreshold).toBe(0.3);
     expect(props.maintainScrollAtEndThreshold).toBe(0.4);
-    expect(props.alignItemsAtEnd).toBe(true);
   });
 });
 

@@ -42,9 +42,19 @@ export interface IAnchorListScrollHandlerOptions {
    */
   publishedScrollOffset?: SharedValue<number>;
   /** Палец на экране; пишется на UI-потоке, без захода в JS. */
-  isDragging?: SharedValue<boolean>;
+  isDragging: SharedValue<boolean>;
+  /**
+   * Фаза жеста, запрошенная наружу через `sharedValues.isDragging`.
+   *
+   * Отдельно от внутреннего значения, по той же причине, что и у смещения: на
+   * внутреннем висит компенсация нижнего отступа, и чужая запись в него
+   * остановила бы её посреди хода клавиатуры.
+   */
+  publishedIsDragging?: SharedValue<boolean>;
   /** Идёт инерция после броска; пишется там же. */
-  isMomentum?: SharedValue<boolean>;
+  isMomentum: SharedValue<boolean>;
+  /** Инерция, запрошенная наружу через `sharedValues.isMomentum`. */
+  publishedIsMomentum?: SharedValue<boolean>;
   /**
    * Пересчёт диапазона отрисовки; вызывается шагами, а не на каждый пиксель.
    *
@@ -87,7 +97,9 @@ export const useListScrollHandler = ({
   scrollOffset,
   publishedScrollOffset,
   isDragging,
+  publishedIsDragging,
   isMomentum,
+  publishedIsMomentum,
   onScroll,
   scrollThrottleDistance = DEFAULT_SCROLL_THROTTLE_DISTANCE,
   onBeginDrag,
@@ -125,12 +137,14 @@ export const useListScrollHandler = ({
       scheduleOnRN(onScroll, offset, Date.now());
     },
     onBeginDrag: () => {
-      if (isDragging) isDragging.value = true;
+      isDragging.value = true;
+      if (publishedIsDragging) publishedIsDragging.value = true;
 
       scheduleOnRN(onBeginDrag);
     },
     onEndDrag: event => {
-      if (isDragging) isDragging.value = false;
+      isDragging.value = false;
+      if (publishedIsDragging) publishedIsDragging.value = false;
 
       const offset = event.contentOffset.y;
 
@@ -144,10 +158,12 @@ export const useListScrollHandler = ({
     // Инерция начинается только после отпускания пальца, и только если бросок
     // был: короткое перетаскивание завершается на `onEndDrag` без неё.
     onMomentumBegin: () => {
-      if (isMomentum) isMomentum.value = true;
+      isMomentum.value = true;
+      if (publishedIsMomentum) publishedIsMomentum.value = true;
     },
     onMomentumEnd: event => {
-      if (isMomentum) isMomentum.value = false;
+      isMomentum.value = false;
+      if (publishedIsMomentum) publishedIsMomentum.value = false;
 
       const offset = event.contentOffset.y;
 

@@ -6,7 +6,6 @@ import type { IEdgeCheckContext, ListEdge } from "../edges";
 import { EdgeThresholds } from "../edges";
 import type { IAnchorListRange } from "../layout";
 import {
-  AlignItemsAtEnd,
   AnchoredEndSpace,
   collectContainerRequests,
   computeVisibleRange,
@@ -111,7 +110,6 @@ export class ListRuntime<TItem> {
   private readonly binder: ContainerBinder;
   private readonly scheduler: LayoutScheduler;
   private readonly contentSize: ContentSize;
-  private readonly alignAtEnd: AlignItemsAtEnd;
   private readonly endSpace: AnchoredEndSpace;
   private readonly readiness: RenderReadiness;
   private readonly initialOffset: InitialOffsetResolver;
@@ -215,12 +213,6 @@ export class ListRuntime<TItem> {
       getStickyLimit: index => this.sticky.getLimitOf(index),
     });
 
-    this.alignAtEnd = new AlignItemsAtEnd({
-      store,
-      metrics: this.metrics,
-      isEnabled: () => this.props.alignItemsAtEnd,
-      getScrollLength: () => this.scrollLength,
-    });
     this.endSpace = new AnchoredEndSpace({
       store,
       metrics: this.metrics,
@@ -422,8 +414,9 @@ export class ListRuntime<TItem> {
       props.getFixedItemSize !== this.props.getFixedItemSize;
     const stickyChanged = props.sticky !== this.props.sticky;
     const rangeChanged = props.drawDistance !== this.props.drawDistance;
-    const alignmentChanged =
-      props.alignItemsAtEnd !== this.props.alignItemsAtEnd ||
+    // Выравнивание короткого контента ядру не адресовано: его сдвиг считается
+    // на UI-потоке, в такт нижнему отступу.
+    const endSpaceChanged =
       props.anchoredEndSpace !== this.props.anchoredEndSpace;
 
     this.props = props;
@@ -431,12 +424,7 @@ export class ListRuntime<TItem> {
     this.maintainAtEnd.setOptions(this.maintainOptions());
     this.viewability.setPairs(props.viewabilityPairs);
 
-    if (
-      !sourceChanged &&
-      !stickyChanged &&
-      !rangeChanged &&
-      !alignmentChanged
-    ) {
+    if (!sourceChanged && !stickyChanged && !rangeChanged && !endSpaceChanged) {
       return;
     }
 
@@ -462,7 +450,6 @@ export class ListRuntime<TItem> {
       this.calculateItemsInView();
     }
 
-    this.alignAtEnd.update();
     this.endSpace.update();
     this.checkThresholds();
 
@@ -478,7 +465,6 @@ export class ListRuntime<TItem> {
     this.store.set("scrollLength", length);
     this.publishGeometry();
     this.calculateItemsInView();
-    this.alignAtEnd.update();
     this.endSpace.update();
     this.checkThresholds();
     this.didLayout = true;
@@ -887,7 +873,6 @@ export class ListRuntime<TItem> {
       this.calculateItemsInView();
     }
 
-    this.alignAtEnd.update();
     this.endSpace.update();
     this.checkThresholds();
     this.initialScroll.apply();

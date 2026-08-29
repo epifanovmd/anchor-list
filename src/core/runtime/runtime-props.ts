@@ -48,8 +48,6 @@ export interface IAnchorListRuntimeProps<TItem> {
   maintainVisibleContentPositionSize: boolean;
   /** Разрешён ли элемент как якорь восстановления. */
   shouldRestorePosition?: (index: number) => boolean;
-  /** Прижимать контент к концу, когда он короче вьюпорта. */
-  alignItemsAtEnd: boolean;
   /** Стартовая позиция скролла. */
   initialScroll?: AnchorListInitialScroll;
   /** Распорка у конца, поднимающая якорный элемент к верхней кромке. */
@@ -94,7 +92,6 @@ export const createRuntimeProps = <TItem>(
     maintainScrollAtEndThreshold = DEFAULT_MAINTAIN_AT_END_THRESHOLD,
     maintainScrollAtEnd,
     maintainVisibleContentPosition,
-    alignItemsAtEnd = false,
     initialScroll,
     anchoredEndSpace,
     sticky,
@@ -134,7 +131,6 @@ export const createRuntimeProps = <TItem>(
             : (shouldRestorePosition(item, index) ?? true);
         }
       : undefined,
-    alignItemsAtEnd,
     initialScroll,
     anchoredEndSpace,
     // Дженерик элемента ядру не нужен: наборы прилипания разбираются по

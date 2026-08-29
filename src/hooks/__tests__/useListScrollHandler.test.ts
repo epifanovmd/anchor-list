@@ -67,15 +67,21 @@ const setup = (
 ): {
   handlers: IScrollHandlers;
   scrollOffset: SharedValue<number>;
+  isDragging: SharedValue<boolean>;
+  isMomentum: SharedValue<boolean>;
   onScroll: jest.Mock;
   /** Встать на смещение и забыть о нём: дальше проверяется только новое. */
   seed: (offset: number) => void;
 } => {
   const scrollOffset = sharedValue(0);
+  const isDragging = sharedValue(false);
+  const isMomentum = sharedValue(false);
   const onScroll = jest.fn();
 
   const handlers = useListScrollHandler({
     scrollOffset,
+    isDragging,
+    isMomentum,
     onScroll,
     onBeginDrag: jest.fn(),
     onEndDrag: jest.fn(),
@@ -88,7 +94,7 @@ const setup = (
     onScroll.mockClear();
   };
 
-  return { handlers, scrollOffset, onScroll, seed };
+  return { handlers, scrollOffset, isDragging, isMomentum, onScroll, seed };
 };
 
 describe("useListScrollHandler", () => {
@@ -241,9 +247,7 @@ describe("useListScrollHandler", () => {
   });
 
   it("пишет фазу жеста без захода в JS", () => {
-    const isDragging = sharedValue(false);
-    const isMomentum = sharedValue(false);
-    const { handlers } = setup({ isDragging, isMomentum });
+    const { handlers, isDragging, isMomentum } = setup();
 
     handlers.onBeginDrag(scrollTo(0));
     expect(isDragging.value).toBe(true);
@@ -256,6 +260,21 @@ describe("useListScrollHandler", () => {
 
     handlers.onMomentumEnd(scrollTo(0));
     expect(isMomentum.value).toBe(false);
+  });
+
+  it("публикует фазу жеста наружу отдельным значением", () => {
+    // Своё значение держится отдельно от чужого: на нём висит компенсация
+    // нижнего отступа, и чужая запись остановила бы её посреди хода.
+    const published = sharedValue(false);
+    const { handlers, isDragging } = setup({ publishedIsDragging: published });
+
+    handlers.onBeginDrag(scrollTo(0));
+    expect(published.value).toBe(true);
+    expect(isDragging.value).toBe(true);
+
+    handlers.onEndDrag(scrollTo(0));
+    expect(published.value).toBe(false);
+    expect(isDragging.value).toBe(false);
   });
 
   it("догоняет пересчёт остатком движения на конце жеста", () => {

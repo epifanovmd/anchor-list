@@ -248,7 +248,7 @@ const itemsAreEqual = useCallback(
 ```tsx
 <AnchorList
   ListHeaderComponent={<ChannelHeader channel={channel} />}
-  ListFooterComponent={ComposerSpacer}
+  ListFooterComponent={<TypingIndicator chatId={chatId} />}
 />
 ```
 

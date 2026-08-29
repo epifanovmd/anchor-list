@@ -34,7 +34,6 @@ const createProps = (
   maintainScrollAtEndAnimated: false,
   maintainVisibleContentPositionData: false,
   maintainVisibleContentPositionSize: false,
-  alignItemsAtEnd: false,
   ...overrides,
 });
 

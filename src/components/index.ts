@@ -3,6 +3,7 @@ export * from "./container-signals";
 export * from "./list-slots";
 export * from "./ListAnchoredEndSpace";
 export * from "./ListContainers";
+export * from "./ListInsetEndSpace";
 export * from "./ListItemContainer";
 export * from "./ListScrollAdjust";
 export * from "./ListStickyOverlay";

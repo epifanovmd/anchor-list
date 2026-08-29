@@ -26,8 +26,6 @@ export interface IAnchorListSignals {
   contentOrigin: number;
   /** Высота подвала списка. */
   footerSize: number;
-  /** Распорка, прижимающая короткий контент к концу списка. */
-  alignItemsAtEndPadding: number;
   /** Распорка у конца, поднимающая якорный элемент к верхней кромке. */
   anchoredEndSpaceSize: number;
   /** Сколько контейнеров существует; ими и ограничен рендер списка. */
@@ -135,7 +133,6 @@ export const INITIAL_SIGNALS: Partial<AnchorListSignalMap> = {
   headerSize: 0,
   contentOrigin: 0,
   footerSize: 0,
-  alignItemsAtEndPadding: 0,
   anchoredEndSpaceSize: 0,
   numContainers: 0,
   scrollSize: { width: 0, height: 0 },

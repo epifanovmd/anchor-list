@@ -28,18 +28,7 @@ export const ChatScreen = ({ chatId }: { chatId: string }) => {
 
   // Одно перекрытие на всех: контент, скролл, индикатор, прилипание и кнопка.
   const composerHeight = useSharedValue(COMPOSER_HEIGHT);
-  const keyboard = useKeyboardInset(composerHeight);
-  const compensation = useKeyboardScrollCompensation(
-    keyboard.contentInset,
-    keyboard.reservedInset,
-  );
-
-  const listFooter = useMemo(
-    () => (
-      <Animated.View style={compensation.spacerStyle} pointerEvents={"none"} />
-    ),
-    [compensation.spacerStyle],
-  );
+  const keyboard = useKeyboardInset({ barHeight: composerHeight });
 
   const sticky = useMemo<IAnchorListStickyConfig<ChatRow>[]>(
     () => [{ edge: "start", indices: dayIndices }],
@@ -70,12 +59,6 @@ export const ChatScreen = ({ chatId }: { chatId: string }) => {
     <View style={{ flex: 1 }}>
       <AnchorList
         ref={listRef}
-        // Компенсация двигает скролл с UI-потока и обязана уступать жесту.
-        refScrollView={compensation.scrollRef}
-        onLayout={compensation.onLayout}
-        onContentSizeChange={compensation.onContentSizeChange}
-        onScrollBeginDrag={compensation.onScrollBeginDrag}
-        onScrollEndDrag={compensation.onScrollEndDrag}
         data={rows}
         renderItem={renderItem}
         keyExtractor={row => row.key}
@@ -93,14 +76,14 @@ export const ChatScreen = ({ chatId }: { chatId: string }) => {
         onStartReached={loadOlder}
         onStartReachedThreshold={0.4}
         sticky={sticky}
-        insetEnd={compensation.contentInset}
+        // Распорка под панель, выравнивание, подъём смещения, отступ
+        // индикатора и отступ якоря конечной кромки — всё отсюда.
+        insetEnd={keyboard.contentInset}
         sharedValues={sharedValues}
-        ListFooterComponent={listFooter}
         recycleItems
         style={{ flex: 1 }}
       />
 
-      {/* Живое перекрытие: высота распорки прыгает к цели сразу. */}
       <JumpToEndButton
         bottomInset={keyboard.contentInset}
         isAtEnd={isAtEnd}
@@ -114,8 +97,9 @@ export const ChatScreen = ({ chatId }: { chatId: string }) => {
 ```
 
 Хуки клавиатуры — в примере:
-[`useKeyboardInset`](../example/src/ui/useKeyboardInset.ts) и
-[`useKeyboardScrollCompensation`](../example/src/ui/useKeyboardScrollCompensation.ts).
+[`useKeyboardHeight`](../example/src/ui/useKeyboardHeight.ts) — сырая высота
+покадрово, [`useKeyboardInset`](../example/src/ui/useKeyboardInset.ts) —
+перекрытие, которое и уходит в `insetEnd`.
 
 Разбор частей: [удержание позиции](maintain-position.md),
 [подгрузка](pagination.md), [отступы](insets.md), [прилипание](sticky.md).

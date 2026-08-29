@@ -1,5 +1,6 @@
 import React, { ComponentType, memo, useMemo } from "react";
-import { View } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 
 import { useListSignals } from "../hooks";
 import type { IAnchorListRenderItemProps } from "../types";
@@ -9,32 +10,28 @@ interface IAnchorListContainersProps {
   renderItem: (props: IAnchorListRenderItemProps<unknown>) => React.ReactNode;
   extraData: unknown;
   ItemSeparatorComponent?: ComponentType<unknown> | null;
+  /** Сдвиг вниз, прижимающий короткий контент к концу списка. */
+  alignOffset: SharedValue<number>;
 }
 
-const SIGNALS = [
-  "numContainers",
-  "totalSize",
-  "readyToRender",
-  "alignItemsAtEndPadding",
-] as const;
+const SIGNALS = ["numContainers", "totalSize", "readyToRender"] as const;
 
 /**
  * Слой контейнеров.
  *
  * Задаёт высоту контента по суммарному размеру элементов — контейнеры внутри
- * позиционированы абсолютно и на высоту не влияют. Короткий контент прижимает
- * к концу отступ сверху: его размер считает `AlignItemsAtEnd`. До первого
- * готового кадра слой прозрачен: иначе виден скачок с оценочных размеров на
- * измеренные.
+ * позиционированы абсолютно и на высоту не влияют. До первого готового кадра
+ * слой прозрачен: иначе виден скачок с оценочных размеров на измеренные.
+ *
+ * Короткий контент прижимает к концу трансформ, а не отступ в раскладке: высота
+ * контента от него не меняется, поэтому список остаётся непрокручиваемым, пока
+ * контент помещается на экран. Считается сдвиг на UI-потоке — он едет вместе с
+ * клавиатурой.
  */
 export const ListContainers = memo<IAnchorListContainersProps>(
-  ({ renderItem, extraData, ItemSeparatorComponent }) => {
-    const [
-      numContainers = 0,
-      totalSize = 0,
-      readyToRender = false,
-      alignPadding = 0,
-    ] = useListSignals(SIGNALS);
+  ({ renderItem, extraData, ItemSeparatorComponent, alignOffset }) => {
+    const [numContainers = 0, totalSize = 0, readyToRender = false] =
+      useListSignals(SIGNALS);
 
     const containers = useMemo(() => {
       const ids: number[] = [];
@@ -45,20 +42,16 @@ export const ListContainers = memo<IAnchorListContainersProps>(
     }, [numContainers]);
 
     const style = useMemo(
-      () => ({
-        height: totalSize,
-        // Распорка отдаётся отступом снаружи, а не внутренним `padding`: Yoga
-        // отсчитывает абсолютного ребёнка с заданным `top` от границы
-        // родителя, и внутренний отступ контейнеры не сдвинул бы — короткий
-        // контент так и остался бы под навбаром.
-        marginTop: alignPadding,
-        opacity: readyToRender ? 1 : 0,
-      }),
-      [totalSize, readyToRender, alignPadding],
+      () => ({ height: totalSize, opacity: readyToRender ? 1 : 0 }),
+      [totalSize, readyToRender],
     );
 
+    const alignStyle = useAnimatedStyle(() => ({
+      transform: [{ translateY: alignOffset.value }],
+    }));
+
     return (
-      <View style={style}>
+      <Animated.View style={[style, alignStyle]}>
         {containers.map(id => (
           <ListItemContainer
             key={id}
@@ -68,7 +61,7 @@ export const ListContainers = memo<IAnchorListContainersProps>(
             ItemSeparatorComponent={ItemSeparatorComponent}
           />
         ))}
-      </View>
+      </Animated.View>
     );
   },
 );

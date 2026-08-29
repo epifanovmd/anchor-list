@@ -49,7 +49,6 @@ const SIGNAL_OF: Record<MirroredName, AnchorListSignalName> = {
   scrollSize: "scrollSize",
   headerSize: "headerSize",
   footerSize: "footerSize",
-  alignItemsAtEndPadding: "alignItemsAtEndPadding",
   anchoredEndSpaceSize: "anchoredEndSpaceSize",
   readyToRender: "readyToRender",
   firstVisibleIndex: "firstVisibleIndex",
