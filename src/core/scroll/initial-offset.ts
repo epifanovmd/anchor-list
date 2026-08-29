@@ -1,14 +1,21 @@
 import type { ListMetrics } from "../../model";
 
 /**
- * Насколько цель должна сдвинуться, чтобы считаться уехавшей, px.
+ * Просимое смещение в целых точках.
  *
- * Нативное смещение приходит квантованным — на экране 3× это трети точки, — и
- * доводка на таких долях гоняется за движением, которого не видно, тратя на
- * него кадры до первого показа списка. Полточки: больше кванта и меньше того,
- * что заметно глазом.
+ * Позиции строк дробные — замеры приходят в долях точки, — а нативный слой
+ * кладёт смещение на пиксель устройства. Просить дробное значит вставать рядом
+ * с целью, а не в ней, и всегда в одну сторону: дробь у позиции одна и та же на
+ * каждом открытии. Снимок позиции запоминает этот промах, следующее открытие
+ * берёт снимок за цель — и стартовая позиция уползает открытие за открытием.
+ * Целая точка лежит на сетке любой плотности, так что список встаёт ровно там,
+ * где просили.
+ *
+ * Верхняя граница округляется вниз: у конца контента просить больше, чем
+ * нативный слой отдаст, значит не доехать никогда.
  */
-const SETTLE_EPSILON = 0.5;
+const toWholePoints = (offset: number, maxScroll: number): number =>
+  Math.max(0, Math.min(Math.round(offset), Math.floor(maxScroll)));
 
 import type { AnchorListInitialScroll } from "../../types";
 import { getItemScrollOffset } from "./item-offset";
@@ -110,21 +117,21 @@ export class InitialOffsetResolver {
     const maxScroll = Math.max(0, getContentSize() - scrollLength);
 
     if (target.type === "offset") {
-      return Math.min(Math.max(0, target.offset), maxScroll);
+      return toWholePoints(target.offset, maxScroll);
     }
 
     // Конец контента, а не конец элементов: под ними лежит распорка под панель
     // ввода, и по сумме элементов список открывался бы с последней строкой под
     // самой панелью.
     if (target.type === "end") {
-      return maxScroll;
+      return toWholePoints(maxScroll, maxScroll);
     }
 
     if (target.index < 0 || target.index >= metrics.getCount()) {
       return undefined;
     }
 
-    return Math.min(
+    return toWholePoints(
       getItemScrollOffset({
         position: metrics.getPosition(target.index),
         size: metrics.getSize(target.index),
@@ -152,10 +159,11 @@ export class InitialOffsetResolver {
     // спросили дважды внутри одного кадра». Список, сдавшийся здесь,
     // открывается по оценкам, а приехавшие следом замеры сдвигают контент уже
     // на глазах у пользователя.
+    // Сравнение точное: смещение просится целыми точками, и дробное движение
+    // метрик до этого сравнения не доходит — см. toWholePoints.
     const settled =
       offset !== undefined &&
-      this.lastOffset !== undefined &&
-      Math.abs(offset - this.lastOffset) < SETTLE_EPSILON &&
+      offset === this.lastOffset &&
       revision === this.lastRevision &&
       this.isTargetRangeMeasured();
 

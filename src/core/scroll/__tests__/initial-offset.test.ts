@@ -50,6 +50,38 @@ const measureViewport = (metrics: ListMetrics, from: number) => {
 };
 
 describe("InitialOffsetResolver", () => {
+  it("просит целое смещение: дробное нативный слой снимает на свою сетку", () => {
+    // Позиции строк дробные — замеры приходят в долях точки. Дробную цель
+    // нативный слой кладёт на ближайший пиксель устройства, и список встаёт
+    // рядом с просимым, а не в нём. Промах маленький, но всегда в одну сторону:
+    // снимок позиции запоминает его, следующее открытие берёт снимок за цель —
+    // и стартовая позиция уползает от открытия к открытию.
+    const { metrics, resolver, state } = createResolver();
+
+    metrics.setMeasuredSize("k0", 100.9);
+    for (let index = 1; index < 20; index += 1) {
+      metrics.setMeasuredSize(`k${index}`, 100);
+    }
+
+    state.target = { type: "index", index: 10, viewOffset: -20 };
+
+    const offset = resolver.resolve();
+
+    expect(offset).toBe(Math.round(offset ?? 0));
+  });
+
+  it("не просит больше, чем нативный слой отдаст у конца", () => {
+    // Округление вверх у самой границы недостижимо: список упрётся в конец
+    // контента и до просимого не доедет никогда.
+    const { resolver, state } = createResolver();
+
+    state.padding = 0.7;
+    state.target = { type: "end" };
+
+    // Конец контента 2000.7 при вьюпорте 500: доехать можно до 1500.7.
+    expect(resolver.resolve()).toBe(1500);
+  });
+
   it("не знает цели без стартовой позиции", () => {
     const { resolver } = createResolver();
 
@@ -302,10 +334,10 @@ describe("InitialOffsetResolver — готовность цели", () => {
     expect(resolver.isSettled()).toBe(true);
   });
 
-  it("считает цель устаканившейся при расхождении меньше точки", () => {
-    // Нативное смещение приходит квантованным — на экране 3× это трети точки.
-    // Гоняться за ними значит тратить кадры до показа списка на движение,
-    // которого не видно.
+  it("не гоняется за движением цели меньше точки", () => {
+    // Замеры уточняют позиции долями точки, и на экране такое движение не
+    // видно. Гоняться за ним значит тратить кадры до показа списка впустую —
+    // просимое смещение целое, и дробь до сравнения не доходит.
     const { resolver, state, metrics } = createResolver();
 
     for (let index = 12; index < 18; index++) {
@@ -315,7 +347,7 @@ describe("InitialOffsetResolver — готовность цели", () => {
     state.target = { type: "offset", offset: 1239.3 };
     resolver.isSettled();
 
-    state.target = { type: "offset", offset: 1239.6 };
+    state.target = { type: "offset", offset: 1239.4 };
     expect(resolver.isSettled()).toBe(true);
 
     state.target = { type: "offset", offset: 1241 };
