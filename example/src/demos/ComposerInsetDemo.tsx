@@ -1,11 +1,10 @@
 import type { IAnchorListRef } from "@epifanovmd/anchor-list";
 import { AnchorList } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
 } from "react-native-reanimated";
 
@@ -26,11 +25,10 @@ import {
   ToggleRow,
   Txt,
   useKeyboardInset,
-  useKeyboardScrollCompensation,
   useTheme,
 } from "../ui";
 
-const INITIAL_COUNT = 120;
+const INITIAL_COUNT = 4;
 /** Высота строки ввода без безопасной зоны под ней. */
 const COMPOSER_HEIGHT = 56;
 
@@ -41,19 +39,24 @@ interface IComposerInsetDemoProps {
 /**
  * Стенд нижнего отступа.
  *
- * Панель ввода и клавиатура съедают низ вьюпорта. Отступ отдаётся списку
- * распоркой в подвале, а контент поднимается вместе с клавиатурой — этим
- * занимается {@link useKeyboardScrollCompensation}: одной распорки мало, она
- * добавляется в конец контента и видимые строки не двигает.
+ * Панель ввода и клавиатура съедают низ вьюпорта. Стенду остаётся посчитать
+ * перекрытие — сколько низа занято прямо сейчас — и отдать одно значение
+ * пропом `insetEnd`. Распорку в конце контента, сдвиг короткого контента к
+ * концу, подъём смещения под клавиатуру, отступ индикатора и отступ якоря
+ * конечной кромки список делает сам и от этого же числа.
  *
- * Положение клавиатуры берётся у `react-native-keyboard-controller`: он отдаёт
- * его покадрово и сразу shared value, поэтому распорка, скролл, индикатор и
- * кнопка возврата едут с клавиатурой в один кадр, а не догоняют её через рендер.
+ * Перекрытие собирает {@link useKeyboardInset}: положение клавиатуры он берёт у
+ * `react-native-keyboard-controller` — покадрово и сразу shared value, поэтому
+ * список, панель ввода и кнопка возврата едут с ней в один кадр, а не догоняют
+ * её через рендер. Выключенный тумблер замораживает перекрытие на безопасной
+ * зоне и высоте панели: список тогда о клавиатуре не знает, и видно, как
+ * контент уходит под неё.
  *
  * Проверяется так: встать у нижней строки и открыть клавиатуру — строка должна
- * остаться видимой, а не уехать под панель. Отдельно проверяется самый низ
- * списка: там место под распорку нужно зарезервировать заранее, иначе сдвиг
- * упрётся в ещё не выросший диапазон скролла.
+ * остаться видимой, а не уехать под панель. Отдельно — самый низ списка: там
+ * контент двигает смещение, и заметно, если оно отстаёт от клавиатуры хоть на
+ * кадр. И отдельно — короткий список: прокручивать в нём нечего, и подъём
+ * целиком делает сдвиг выравнивания.
  */
 export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
   const { palette } = useTheme();
@@ -69,38 +72,13 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
   /** Список у нижнего края: по нему кнопка возврата решает, показываться ли. */
   const isAtEnd = useSharedValue(true);
 
-  // С выключенной компенсацией отступ застывает на закрытом положении: список
-  // не узнаёт о клавиатуре, и видно, как контент уходит под неё.
-  const isCompensating = useSharedValue(compensate);
-
-  useEffect(() => {
-    isCompensating.value = compensate;
-  }, [compensate, isCompensating]);
-
   const composerHeight = useSharedValue(COMPOSER_HEIGHT);
-  const keyboard = useKeyboardInset(composerHeight);
-
-  /** Перекрытие при закрытой клавиатуре — панель плюс безопасная зона. */
-  const closedInset = useDerivedValue(
-    () =>
-      COMPOSER_HEIGHT +
-      Math.max(
-        0,
-        keyboard.occludedBottom.value - keyboard.keyboardHeight.value,
-      ),
-  );
-
-  const contentInset = useDerivedValue(() =>
-    isCompensating.value ? keyboard.contentInset.value : closedInset.value,
-  );
-  const reservedInset = useDerivedValue(() =>
-    isCompensating.value ? keyboard.reservedInset.value : closedInset.value,
-  );
-
-  const compensation = useKeyboardScrollCompensation(
-    contentInset,
-    reservedInset,
-  );
+  // Выключенная компенсация замораживает перекрытие на закрытом положении:
+  // список не узнаёт о клавиатуре, и видно, как контент уходит под неё.
+  const keyboard = useKeyboardInset({
+    barHeight: composerHeight,
+    enabled: compensate,
+  });
 
   const composerStyle = useAnimatedStyle(() => ({
     // Безопасная зона гасится ровно настолько, насколько её перекрыла
@@ -109,13 +87,6 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
       keyboard.occludedBottom.value - keyboard.keyboardHeight.value,
     transform: [{ translateY: -keyboard.keyboardHeight.value }],
   }));
-
-  const listFooter = useMemo(
-    () => (
-      <Animated.View style={compensation.spacerStyle} pointerEvents={"none"} />
-    ),
-    [compensation.spacerStyle],
-  );
 
   const handleSend = useCallback(() => {
     setRows(current => {
@@ -164,13 +135,6 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
       <View style={ss.body}>
         <AnchorList
           ref={listRef}
-          // Компенсация двигает скролл с UI-потока — ей нужен тот же ScrollView.
-          refScrollView={compensation.scrollRef}
-          onLayout={compensation.onLayout}
-          onContentSizeChange={compensation.onContentSizeChange}
-          // Пока палец на экране, позицией управляет жест.
-          onScrollBeginDrag={compensation.onScrollBeginDrag}
-          onScrollEndDrag={compensation.onScrollEndDrag}
           data={rows}
           renderItem={renderItem}
           keyExtractor={chatRowKey}
@@ -181,11 +145,11 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
           initialScroll={{ type: "end" }}
           maintainScrollAtEnd={maintainScrollAtEnd}
           maintainVisibleContentPosition={{ data: true, size: true }}
-          // Высота той же распорки: индикатор скролла и якорь конечной кромки
-          // обязаны кончаться на одной линии с последней строкой.
-          insetEnd={compensation.contentInset}
+          // Одно значение на весь низ: распорка в конце контента, сдвиг
+          // короткого контента к концу, подъём смещения под клавиатуру,
+          // индикатор скролла и якорь конечной кромки.
+          insetEnd={keyboard.contentInset}
           sharedValues={sharedValues}
-          ListFooterComponent={listFooter}
           recycleItems
           style={ss.list}
         />
@@ -195,7 +159,7 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
             прыгает к цели сразу, и кнопка уехала бы вверх раньше клавиатуры, а
             при закрытии повисла бы наверху до конца анимации. */}
         <JumpToEndButton
-          bottomInset={contentInset}
+          bottomInset={keyboard.contentInset}
           isAtEnd={isAtEnd}
           onPress={handleJumpToEnd}
         />

@@ -128,8 +128,7 @@ export const EndlessFeedDemo: FC<IEndlessFeedDemoProps> = ({ onBack }) => {
         onStartReachedThreshold={0.4}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

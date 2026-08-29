@@ -116,8 +116,7 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         getFixedItemSize={chatRowHeight}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

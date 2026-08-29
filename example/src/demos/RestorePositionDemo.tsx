@@ -184,8 +184,7 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
         // Палец отпущен: смещение внутри той же строки в смену видимого
         // диапазона не попадает, а вернуть строку нужно тем же куском.
         onScrollEndDrag={capturePosition}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

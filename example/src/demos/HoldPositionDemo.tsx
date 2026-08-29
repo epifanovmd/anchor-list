@@ -228,8 +228,7 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
         getFixedItemSize={knownHeights ? chatRowHeight : undefined}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
         maintainVisibleContentPosition={maintainVisibleContentPosition}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

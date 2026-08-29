@@ -75,8 +75,7 @@ export const ThroughputDemo: FC<IThroughputDemoProps> = ({ onBack }) => {
         onStartReachedThreshold={0.4}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

@@ -13,4 +13,3 @@ export * from "./Txt";
 export * from "./useBottomInset";
 export * from "./useKeyboardHeight";
 export * from "./useKeyboardInset";
-export * from "./useKeyboardScrollCompensation";

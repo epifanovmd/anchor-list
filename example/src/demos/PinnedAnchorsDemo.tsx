@@ -137,8 +137,7 @@ export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
         estimatedItemSize={ESTIMATED_ROW_SIZE}
         drawDistance={600}
         sticky={sticky}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

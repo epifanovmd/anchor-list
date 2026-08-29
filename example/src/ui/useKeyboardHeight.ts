@@ -2,19 +2,8 @@ import { useKeyboardHandler } from "react-native-keyboard-controller";
 import type { SharedValue } from "react-native-reanimated";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 
-/** Сырая высота клавиатуры: текущая и та, к которой едем. */
-export interface IKeyboardHeight {
-  /** Текущая высота, px; 0 — скрыта. Живёт на UI-потоке. */
-  height: SharedValue<number>;
-  /**
-   * Высота, к которой едем.
-   *
-   * Известна из `onStart` — до того, как клавиатура тронулась. По ней
-   * резервируют место: раскладке нужен кадр, чтобы вырасти, а сдвинуть контент
-   * нужно уже в этом.
-   */
-  targetHeight: SharedValue<number>;
-}
+/** Сырая высота клавиатуры на UI-потоке; 0 — скрыта. */
+export type KeyboardHeight = SharedValue<number>;
 
 /**
  * Единственная подписка на клавиатуру.
@@ -27,15 +16,13 @@ export interface IKeyboardHeight {
  * покадровые события приходят не на всех платформах, и без этого движение было
  * бы ступенчатым.
  */
-export const useKeyboardHeight = (): IKeyboardHeight => {
+export const useKeyboardHeight = (): KeyboardHeight => {
   const height = useSharedValue(0);
-  const targetHeight = useSharedValue(0);
 
   useKeyboardHandler({
     onStart: event => {
       "worklet";
 
-      targetHeight.value = event.height;
       height.value = withTiming(event.height, { duration: event.duration });
     },
     onMove: event => {
@@ -46,16 +33,14 @@ export const useKeyboardHeight = (): IKeyboardHeight => {
     onInteractive: event => {
       "worklet";
 
-      targetHeight.value = event.height;
       height.value = event.height;
     },
     onEnd: event => {
       "worklet";
 
-      targetHeight.value = event.height;
       height.value = event.height;
     },
   });
 
-  return { height, targetHeight };
+  return height;
 };

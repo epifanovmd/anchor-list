@@ -14,6 +14,7 @@ import type { FC } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useAnimatedReaction, useSharedValue } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { ChatRowData } from "../data";
 import {
@@ -79,6 +80,7 @@ interface ILiveStateDemoProps {
  */
 export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
   const { palette } = useTheme();
+  const { bottom: inset } = useSafeAreaInsets();
   const bottomInset = useBottomInset();
 
   const { rows, dayIndices, avatarIndices, groupStarts } = useMemo(
@@ -156,7 +158,6 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
   const totalSize = useAnchorListValue(listState, "totalSize");
   const headerSize = useAnchorListValue(listState, "headerSize");
   const footerSize = useAnchorListValue(listState, "footerSize");
-  const alignPadding = useAnchorListValue(listState, "alignItemsAtEndPadding");
   const endSpace = useAnchorListValue(listState, "anchoredEndSpaceSize");
   const scrollSize = useAnchorListValue(listState, "scrollSize");
   const scrollLength = useAnchorListValue(listState, "scrollLength");
@@ -176,11 +177,7 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
    * ничего.
    */
   /** Всё, что список добавляет к элементам: шапка, подвал и распорки. */
-  const trim =
-    (headerSize ?? 0) +
-    (footerSize ?? 0) +
-    (alignPadding ?? 0) +
-    (endSpace ?? 0);
+  const trim = (headerSize ?? 0) + (footerSize ?? 0) + (endSpace ?? 0) + inset;
 
   const renderCount = useRef(0);
 
@@ -314,7 +311,7 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
           text={`контент ${round(contentSize)} = элементы ${round(totalSize)} + обвязка ${round(trim)}`}
         />
         <StatusLine
-          text={`обвязка: шапка ${round(headerSize)} · подвал ${round(footerSize)} · распорки ${round((alignPadding ?? 0) + (endSpace ?? 0))}`}
+          text={`обвязка: шапка ${round(headerSize)} · подвал ${round(footerSize)} · распорки ${round((endSpace ?? 0) + inset)}`}
         />
         {/* Вьюпорт отдаётся и целиком, и вдоль оси скролла: прилипанию нужна
             вторая величина, а вертикальному списку она равна высоте. */}
@@ -350,8 +347,7 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
         state={listState}
         viewabilityPairs={viewabilityPairs}
         ListHeaderComponent={listHeader}
-        ListFooterComponent={bottomInset.footer}
-        insetEnd={bottomInset.inset}
+        insetEnd={bottomInset}
         recycleItems
         style={ss.list}
       />

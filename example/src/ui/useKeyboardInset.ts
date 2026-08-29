@@ -1,10 +1,28 @@
+import { useEffect, useMemo } from "react";
 import type { SharedValue } from "react-native-reanimated";
-import { useDerivedValue } from "react-native-reanimated";
+import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useKeyboardHeight } from "./useKeyboardHeight";
 
-/** Сколько низа экрана занято не контентом. */
+/** Из чего складывается нижнее перекрытие экрана. */
+export interface IKeyboardInsetOptions {
+  /** Высота панели ввода без безопасной зоны под ней. */
+  barHeight: SharedValue<number>;
+  /** Что добавить сверх панели и зоны: зазор, тень, что угодно своё. */
+  extraPadding?: number;
+  /**
+   * Компенсация включена; по умолчанию да.
+   *
+   * Выключенная замораживает перекрытие на закрытом положении: список тогда не
+   * узнаёт о клавиатуре, и видно, как контент уходит под неё. В приложении тем
+   * же способом отступ придерживают, пока поле ввода потеряло фокус, — иначе
+   * закрывшаяся клавиатура дёргает раскладку под всплывающей панелью.
+   */
+  enabled?: boolean;
+}
+
+/** Нижнее перекрытие экрана: одно значение на всех, кто до него дотягивается. */
 export interface IKeyboardInset {
   /**
    * Перекрытие снизу: клавиатура либо безопасная зона.
@@ -20,54 +38,57 @@ export interface IKeyboardInset {
    * собой гасить — иначе между строкой ввода и клавишами остаётся пустая полоса.
    */
   keyboardHeight: SharedValue<number>;
-  /** Полное перекрытие: зона плюс панель ввода. */
+  /** Перекрытие при закрытой клавиатуре: панель плюс безопасная зона. */
+  closedInset: SharedValue<number>;
+  /** Полное перекрытие — оно и уходит списку в `insetEnd`. */
   contentInset: SharedValue<number>;
-  /**
-   * То же перекрытие, но целевое — известно до начала движения.
-   *
-   * Та же формула, только на целевой высоте клавиатуры. По нему резервируется
-   * место в конце контента: без резерва у самого низа списка сдвиг упирается в
-   * ещё не выросший диапазон скролла.
-   */
-  reservedInset: SharedValue<number>;
 }
 
 /**
- * Нижнее перекрытие экрана одним источником.
+ * Единственная подписка на клавиатуру на экран.
  *
- * Отсюда его берут все, кто до низа дотягивается: панель ввода, распорка и
- * сдвиг скролла, кнопка возврата, индикатор скролла и якорь конечной кромки.
- * Считать «сколько занято снизу» каждому самостоятельно — значит получить
- * столько же расходящихся ответов.
+ * Отсюда перекрытие берут все, кто до низа дотягивается: список пропом
+ * `insetEnd`, панель ввода, кнопка возврата. Считать «сколько занято снизу»
+ * каждому самостоятельно — значит получить столько же расходящихся ответов, а
+ * расхождение видно глазом.
  *
- * @param barHeight высота панели ввода без безопасной зоны под ней.
+ * Всё живёт на UI-потоке: клавиатура едет покадрово, и через рендер значения
+ * отставали бы на кадр.
  */
-export const useKeyboardInset = (
-  barHeight: SharedValue<number>,
-): IKeyboardInset => {
+export const useKeyboardInset = ({
+  barHeight,
+  extraPadding = 0,
+  enabled = true,
+}: IKeyboardInsetOptions): IKeyboardInset => {
   const { bottom: safeAreaBottom } = useSafeAreaInsets();
-  const keyboard = useKeyboardHeight();
+  const keyboardHeight = useKeyboardHeight();
+
+  // Признак на UI-потоке: перекрытие считается в worklet, и обычное поле
+  // объекта туда не доходит.
+  const isEnabled = useSharedValue(enabled);
+
+  useEffect(() => {
+    isEnabled.value = enabled;
+  }, [enabled, isEnabled]);
 
   const occludedBottom = useDerivedValue(() =>
-    Math.max(keyboard.height.value, safeAreaBottom),
+    Math.max(keyboardHeight.value, safeAreaBottom),
   );
 
-  const occludedBottomTarget = useDerivedValue(() =>
-    Math.max(keyboard.targetHeight.value, safeAreaBottom),
+  const closedInset = useDerivedValue(
+    () => safeAreaBottom + barHeight.value + extraPadding,
   );
 
-  const contentInset = useDerivedValue(
-    () => occludedBottom.value + barHeight.value,
+  const liveInset = useDerivedValue(
+    () => occludedBottom.value + barHeight.value + extraPadding,
   );
 
-  const reservedInset = useDerivedValue(
-    () => occludedBottomTarget.value + barHeight.value,
+  const contentInset = useDerivedValue(() =>
+    isEnabled.value ? liveInset.value : closedInset.value,
   );
 
-  return {
-    occludedBottom,
-    keyboardHeight: keyboard.height,
-    contentInset,
-    reservedInset,
-  };
+  return useMemo(
+    () => ({ occludedBottom, keyboardHeight, closedInset, contentInset }),
+    [occludedBottom, keyboardHeight, closedInset, contentInset],
+  );
 };
