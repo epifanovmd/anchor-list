@@ -16,7 +16,7 @@ const createScroll = (
   const scrollToOffset = jest.fn();
   const onFinished = jest.fn();
   const scroll = new InitialScroll({
-    target,
+    getTarget: () => target,
     resolveOffset: overrides.resolveOffset ?? (() => 500),
     scrollToOffset,
     isTargetSettled: overrides.isTargetSettled ?? (() => true),
@@ -31,10 +31,61 @@ describe("InitialScroll", () => {
     jest.useFakeTimers();
     globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
       setTimeout(() => callback(0), 16) as unknown as number;
+    globalThis.cancelAnimationFrame = handle => clearTimeout(handle);
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it("не тратит попытки, пока цель не вычислима", () => {
+    // Цель ждёт замера контента: считать попыткой кадр, где скроллить некуда,
+    // значит позже принять невыполненную команду за стартовую позицию.
+    let offset: number | undefined;
+    const { scroll, scrollToOffset, onFinished } = createScroll(
+      { type: "index", index: 95 },
+      { resolveOffset: () => offset },
+    );
+
+    for (let attempt = 0; attempt < 12; attempt++) scroll.apply();
+
+    expect(scrollToOffset).not.toHaveBeenCalled();
+    expect(onFinished).not.toHaveBeenCalled();
+
+    // Замер пришёл — позиция применяется, попытки целы.
+    offset = 6810;
+    scroll.apply();
+
+    expect(scrollToOffset).toHaveBeenCalledWith(6810);
+    expect(onFinished).toHaveBeenCalledTimes(1);
+  });
+
+  it("активен, пока не применил цель", () => {
+    const { scroll } = createScroll({ type: "end" });
+
+    expect(scroll.hasApplied()).toBe(false);
+
+    scroll.apply();
+
+    expect(scroll.hasApplied()).toBe(true);
+  });
+
+  it("не считает попытку применённой без нативного адаптера", () => {
+    const scrollToOffset = jest.fn(() => false);
+    const onFinished = jest.fn();
+    const scroll = new InitialScroll({
+      getTarget: () => ({ type: "end" }),
+      resolveOffset: () => 500,
+      scrollToOffset,
+      isTargetSettled: () => false,
+      onFinished,
+    });
+
+    scroll.apply();
+
+    expect(scrollToOffset).toHaveBeenCalledWith(500);
+    expect(scroll.hasApplied()).toBe(false);
+    expect(onFinished).not.toHaveBeenCalled();
   });
 
   it("активен, пока не завершён", () => {
@@ -93,8 +144,8 @@ describe("InitialScroll", () => {
     expect(onFinished).not.toHaveBeenCalled();
   });
 
-  it("сдаётся после предела попыток", () => {
-    const { scroll, scrollToOffset, onFinished } = createScroll(
+  it("не раскрывает список по числу кадров, пока цель не готова", () => {
+    const { scroll, onFinished } = createScroll(
       { type: "end" },
       { isTargetSettled: () => false },
     );
@@ -102,10 +153,23 @@ describe("InitialScroll", () => {
     scroll.apply();
     flushFrames(20);
 
-    // Иначе список открывался бы на позиции, доводимой бесконечно.
-    expect(scrollToOffset).toHaveBeenCalledTimes(10);
-    expect(onFinished).toHaveBeenCalledTimes(1);
-    expect(scroll.isActive()).toBe(false);
+    // Ограничение ожидания живёт в RenderReadiness и считается временем
+    // тишины, а не десятью rAF, которые могут пройти до нативного коммита.
+    expect(onFinished).not.toHaveBeenCalled();
+    expect(scroll.isActive()).toBe(true);
+  });
+
+  it("отменяет запланированную доводку при размонтировании", () => {
+    const { scroll, scrollToOffset } = createScroll(
+      { type: "end" },
+      { isTargetSettled: () => false },
+    );
+
+    scroll.apply();
+    (scroll as unknown as { dispose: () => void }).dispose();
+    flushFrames(2);
+
+    expect(scrollToOffset).toHaveBeenCalledTimes(1);
   });
 
   it("не выполняет вложенных попыток, пока запланирована следующая", () => {

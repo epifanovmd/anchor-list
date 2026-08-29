@@ -14,6 +14,8 @@ export interface IFreshOffsetParams {
    * событием и живым смещением, перепривязывая контейнеры на каждом проходе.
    */
   previous: number;
+  /** Смещение, по которому уже посчитана текущая раскладка. */
+  current: number;
   scrollLength: number;
 }
 
@@ -43,12 +45,24 @@ export const resolveFreshOffset = ({
   offset,
   live,
   previous,
+  current,
   scrollLength,
 }: IFreshOffsetParams): number => {
   if (live === undefined || scrollLength <= 0) return offset;
-  if (Math.abs(live - offset) <= scrollLength * STALE_SCREENS) return offset;
 
   const moving = Math.sign(offset - previous);
+
+  // После перехода на живой offset очередь событий ещё какое-то время его
+  // догоняет. Как только lag становится чуть меньше порога, слепой возврат к
+  // событию откатывает раскладку против хода скролла на величину этого lag.
+  // Пока событие лежит позади уже применённой позиции, остаёмся на живой.
+  if (moving !== 0 && Math.sign(offset - current) === -moving) {
+    const liveDirection = Math.sign(live - current);
+
+    return liveDirection === moving || liveDirection === 0 ? live : current;
+  }
+
+  if (Math.abs(live - offset) <= scrollLength * STALE_SCREENS) return offset;
 
   return moving !== 0 && Math.sign(live - offset) === moving ? live : offset;
 };

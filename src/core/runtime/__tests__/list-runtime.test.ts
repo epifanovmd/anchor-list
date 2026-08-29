@@ -320,9 +320,10 @@ describe("ListRuntime — измерения", () => {
 
     nextFrame();
 
-    // Пять измеренных по 60 вместо оценки в 100; остальные держат выданную им
-    // оценку — задним числом она не меняется.
-    expect(store.peek("totalSize")).toBe(3800);
+    // Пять измеренных по 60, остальные — по накопленному среднему того же типа:
+    // до первых замеров им доставалась догадка из пропа, и держаться за неё
+    // незачем.
+    expect(store.peek("totalSize")).toBe(2400);
   });
 
   it("не принимает измерение, ничего не меняющее в раскладке", () => {
@@ -399,6 +400,165 @@ describe("ListRuntime — удержание позиции", () => {
     expect(runtime.getRange()).toMatchObject({ start: 15, end: 19 });
   });
 
+  it("не считает программный переезд движением пользователя", () => {
+    // Скролл к позиции — это прыжок на тысячи точек за одно событие. Посчитай
+    // по нему скорость — выйдет сотня px/мс, какой палец не даёт; на этом
+    // основании список выключил бы компенсацию размеров и раздул запас
+    // отрисовки, а на экране это дрожание после каждого перехода.
+    const { store, runtime } = createRuntime();
+
+    runtime.setScroll(80, 1000);
+    runtime.scrollToOffset(3000);
+    runtime.setScroll(3000, 1016);
+
+    expect(store.peek("velocity")).toBe(0);
+  });
+
+  it("считает скорость движения пальцем", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.onGestureBegin();
+    runtime.setScroll(80, 1000);
+    runtime.setScroll(240, 1016);
+
+    expect(store.peek("velocity")).toBeGreaterThan(0);
+  });
+
+  it("компенсирует размер на программном скролле, не глядя на скорость", () => {
+    // Пользователь смотрит на неподвижный экран: пропускать компенсацию не за
+    // чем, даже если по числам «скорость» велика.
+    const { store, runtime } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 40; index++)
+      runtime.setItemSize(`k${index}`, 100);
+
+    nextFrame();
+    runtime.scrollToOffset(1000);
+    runtime.setScroll(1000, 1000);
+    runtime.setItemSize("k0", 200);
+    nextFrame();
+
+    expect(store.peek("scrollAdjust")).toBe(100);
+  });
+
+  it("не запускает MVCP по размеру во время начальной доводки", () => {
+    const { store, runtime } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      initialScroll: { type: "end" },
+      maintainVisibleContentPositionSize: true,
+    });
+
+    runtime.setContentSize(4000);
+    runtime.setScroll(3500);
+
+    // Часть целевого экрана уже измерена, поэтому для следующего замера есть
+    // живой якорь. k35 оставляем оценочным: initialScroll всё ещё активен.
+    for (let index = 36; index < 40; index++) {
+      runtime.setItemSize(`k${index}`, 100);
+    }
+    nextFrame();
+
+    runtime.setItemSize("k0", 200);
+    nextFrame();
+
+    // Начальная доводка сама задаёт абсолютный offset. Относительный нативный
+    // сдвиг в той же транзакции конкурировал с ней и иногда применялся дважды.
+    expect(store.peek("scrollAdjust")).toBe(0);
+  });
+
+  it("повторяет начальную позицию после подключения адаптера", () => {
+    const store = new ListStore();
+    const runtime = new ListRuntime<IRow>(
+      store,
+      createProps(rows(40), { initialScroll: { type: "end" } }),
+    );
+    const adapter: IScrollAdapter = {
+      scrollToEnd: jest.fn(),
+      scrollToOffset: jest.fn(),
+      getOffset: jest.fn(() => 0),
+    };
+
+    runtime.setScrollLength(SCROLL_LENGTH);
+    runtime.setContentSize(4000);
+    expect(adapter.scrollToOffset).not.toHaveBeenCalled();
+
+    runtime.setAdapter(adapter);
+
+    expect(adapter.scrollToOffset).toHaveBeenCalledWith(3500, false);
+  });
+
+  it("принимает стартовую позицию, появившуюся до первого показа", () => {
+    const { runtime, adapter } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+    });
+
+    runtime.setContentSize(4000);
+    (adapter.scrollToOffset as jest.Mock).mockClear();
+
+    runtime.setProps(
+      createProps(rows(40), {
+        getFixedItemSize: undefined,
+        initialScroll: { type: "end" },
+      }),
+    );
+
+    // Асинхронно загруженное сохранение успело до fallback первого показа —
+    // список ещё скрыт и может открыть нужную позицию без видимого прыжка.
+    expect(adapter.scrollToOffset).toHaveBeenCalledWith(3500, false);
+  });
+
+  it("завершает программную пометку событием с тем же offset", () => {
+    const { store, runtime } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 400; index++) {
+      runtime.setItemSize(`k${index}`, 100);
+    }
+    nextFrame();
+
+    // Разгоняемся выше порога компенсации.
+    for (let frame = 1; frame <= 3; frame++) {
+      jest.advanceTimersByTime(16);
+      runtime.setScroll(10000 + frame * 400);
+    }
+
+    const offset = runtime.getScroll();
+
+    expect(runtime.getVelocity()).toBeGreaterThan(15);
+
+    runtime.scrollToOffset(offset);
+    runtime.setScroll(offset);
+    runtime.setItemSize("k0", 200);
+    nextFrame();
+
+    // Если равное событие не сняло программную пометку, высокая скорость была
+    // проигнорирована и MVCP сделал ненужный сдвиг.
+    expect(store.peek("scrollAdjust")).toBe(0);
+  });
+
+  it("не запускает прилипание к концу во время начальной доводки", () => {
+    const { runtime, adapter } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      initialScroll: { type: "end" },
+      maintainScrollAtEnd: true,
+    });
+
+    runtime.setContentSize(4000);
+    runtime.setScroll(3500);
+    (adapter.scrollToEnd as jest.Mock).mockClear();
+
+    runtime.setItemSize("k39", 120);
+    nextFrame();
+    nextFrame();
+
+    expect(adapter.scrollToEnd).not.toHaveBeenCalled();
+  });
+
   it("не компенсирует, когда удержание выключено", () => {
     const { store, runtime } = createRuntime();
 
@@ -425,6 +585,33 @@ describe("ListRuntime — удержание позиции", () => {
 
     expect(store.peek("scrollAdjust")).toBe(200);
     expect(runtime.getScroll()).toBe(1200);
+  });
+
+  it("публикует новые позиции и их компенсацию одним снимком", () => {
+    const { store, runtime } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      maintainVisibleContentPositionSize: true,
+    });
+
+    for (let index = 0; index < 40; index++)
+      runtime.setItemSize(`k${index}`, 100);
+    nextFrame();
+    runtime.setScroll(1000);
+
+    const seenAdjust: number[] = [];
+    const capture = () =>
+      seenAdjust.push(store.peek("scrollAdjust") ?? Number.NaN);
+
+    store.listenPosition("k10", capture);
+    store.listen("scrollAdjust", capture);
+
+    runtime.setItemSize("k0", 200);
+    nextFrame();
+
+    // React не должен увидеть позицию k10=1100 при ещё старом adjust=0:
+    // такой промежуточный commit и создаёт видимый кадр-прыжок.
+    expect(seenAdjust.length).toBeGreaterThan(0);
+    expect(seenAdjust.every(adjust => adjust === 100)).toBe(true);
   });
 
   /**
@@ -688,6 +875,26 @@ describe("ListRuntime — кромки и скролл", () => {
     expect(onEndReached).not.toHaveBeenCalled();
   });
 
+  it("не откатывает раскладку к догоняющей очереди scroll-events", () => {
+    const { runtime, adapter } = createRuntime(rows(104));
+    let native = 5700;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => native);
+    runtime.setScrollLength(741);
+    runtime.setScroll(5700);
+
+    // JS отстал больше чем на полэкрана — переходим на живой UI-offset.
+    native = 4883.3;
+    runtime.setScroll(5604.7);
+    expect(runtime.getScroll()).toBe(4883.3);
+
+    // Следующее старое событие уже ближе порога, но всё ещё лежит позади
+    // текущего нативного положения. Возвращаться к нему нельзя.
+    runtime.setScroll(5238);
+
+    expect(runtime.getScroll()).toBe(4883.3);
+  });
+
   it("двигает нативный скролл через адаптер", () => {
     const { runtime, adapter } = createRuntime();
 
@@ -698,6 +905,50 @@ describe("ListRuntime — кромки и скролл", () => {
     expect(adapter.scrollToOffset).toHaveBeenCalledWith(300, false);
     expect(adapter.scrollToEnd).toHaveBeenCalledWith(false);
     expect(adapter.scrollToOffset).toHaveBeenCalledWith(1000, false);
+  });
+
+  it("доводит scrollToEnd после уточнения высоты контента", () => {
+    const { runtime, adapter } = createRuntime();
+
+    runtime.setContentSize(4000);
+    runtime.scrollToEnd();
+    // Первый переезд монтирует последние строки, но ещё опирается на их
+    // оценочные высоты. Его событие не должно забывать цель «конец».
+    runtime.setScroll(3500);
+    runtime.setContentSize(4200);
+
+    jest.advanceTimersByTime(50);
+
+    expect(adapter.scrollToEnd).toHaveBeenCalledTimes(2);
+    expect(adapter.scrollToEnd).toHaveBeenLastCalledWith(false);
+  });
+
+  it("объединяет серию уточнений высоты в одну доводку к концу", () => {
+    const { runtime, adapter } = createRuntime();
+
+    runtime.scrollToEnd();
+    runtime.setScroll(3500);
+    runtime.setContentSize(4050);
+    runtime.setContentSize(4100);
+    runtime.setContentSize(4200);
+
+    // Строки измеряются по одной, но нативный скролл не должен повторять их
+    // ступеньками: ждём короткого затишья и применяем только последний конец.
+    expect(adapter.scrollToEnd).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(50);
+
+    expect(adapter.scrollToEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it("не возвращает к концу после начала жеста", () => {
+    const { runtime, adapter } = createRuntime();
+
+    runtime.scrollToEnd();
+    runtime.onGestureBegin();
+    runtime.setContentSize(4200);
+
+    expect(adapter.scrollToEnd).toHaveBeenCalledTimes(1);
   });
 
   it("ставит элемент в заданное место вьюпорта", () => {

@@ -16,7 +16,7 @@ const createReadiness = (
   const count = options.count ?? 5;
   const keys = Array.from({ length: count }, (_, index) => `k${index}`);
   const finish = jest.fn();
-  const state = { pending: true };
+  const state = { pending: true, revision: 0 };
 
   metrics.setItems(
     keys,
@@ -37,6 +37,7 @@ const createReadiness = (
       },
     getCount: () => count,
     hasInitialTarget: () => options.hasInitialTarget ?? false,
+    getLayoutRevision: () => state.revision,
     isPending: () => state.pending,
     finish: () => {
       state.pending = false;
@@ -138,6 +139,65 @@ describe("RenderReadiness — страховка", () => {
     jest.advanceTimersByTime(150);
 
     // Их может не быть вовсе: пустые данные, нулевая высота ячейки.
+    expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it("не показывает список, пока стартовая позиция ни разу не применялась", () => {
+    // Показать сейчас — значит показать не там, где просили: цель ещё не
+    // вычислима, потому что нет замера контента. Страховка идёт на новый круг.
+    const { readiness, finish } = createReadiness({
+      hasInitialTarget: true,
+    });
+
+    readiness.scheduleFallback();
+    jest.advanceTimersByTime(150 * 3);
+
+    expect(finish).not.toHaveBeenCalled();
+  });
+
+  it("не показывает применённую стартовую позицию, пока доводка не завершена", () => {
+    const { readiness, finish } = createReadiness({
+      hasInitialTarget: true,
+    });
+
+    readiness.scheduleFallback();
+    jest.advanceTimersByTime(150 * 3);
+
+    // Команда scrollTo уже ушла, но целевые контейнеры могут ещё ждать mount и
+    // measure. Один тихий круг не означает, что нативный кадр готов.
+    expect(finish).not.toHaveBeenCalled();
+  });
+
+  it("сдаётся, если стартовая позиция так и не применилась", () => {
+    // Кругов не бесконечно: замер контента приходит первыми кадрами, и если его
+    // нет вовсе — список всё равно нужно показать.
+    const { readiness, finish } = createReadiness({
+      hasInitialTarget: true,
+    });
+
+    readiness.scheduleFallback();
+    jest.advanceTimersByTime(150 * 11);
+
+    expect(finish).toHaveBeenCalledTimes(1);
+  });
+
+  it("не показывает список, пока размеры ещё приходят", () => {
+    // Замеры продолжают менять раскладку: показать сейчас — показать кадр,
+    // который переложится на глазах.
+    const { readiness, finish, state } = createReadiness();
+
+    readiness.scheduleFallback();
+
+    for (let round = 0; round < 3; round += 1) {
+      state.revision += 1;
+      jest.advanceTimersByTime(150);
+    }
+
+    expect(finish).not.toHaveBeenCalled();
+
+    // Замеры кончились — список можно показывать.
+    jest.advanceTimersByTime(150);
+
     expect(finish).toHaveBeenCalledTimes(1);
   });
 

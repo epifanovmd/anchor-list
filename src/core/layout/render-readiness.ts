@@ -4,6 +4,16 @@ import type { IAnchorListRange } from "./visible-range";
 /** Сколько ждать измерений перед первым показом списка, мс. */
 const READY_FALLBACK_MS = 150;
 
+/**
+ * Сколько кругов страховка ждёт, прежде чем показать список как есть.
+ *
+ * Ждать приходится замера контента — без него стартовую позицию не применить —
+ * и замеров строк, пока те меняют раскладку. И то и другое приходит первыми
+ * кадрами; десять кругов — заведомо больше, чем нужно, и всё же конечно: не
+ * придут замеры вовсе — список всё равно показывается.
+ */
+const MAX_FALLBACK_ROUNDS = 10;
+
 /** Зависимости первого показа списка. */
 export interface IRenderReadinessOptions {
   metrics: ListMetrics;
@@ -11,6 +21,8 @@ export interface IRenderReadinessOptions {
   getCount: () => number;
   /** Стартовая позиция задана пропом: показом распоряжается начальный скролл. */
   hasInitialTarget: () => boolean;
+  /** Счётчик изменений раскладки: растёт от каждого применённого замера. */
+  getLayoutRevision: () => number;
   /** Начальный скролл ещё не завершён. */
   isPending: () => boolean;
   /** Показать список. */
@@ -39,6 +51,12 @@ export class RenderReadiness {
   /** Страховка первого показа, если измерения так и не пришли. */
   private fallbackTimeout: ReturnType<typeof setTimeout> | undefined;
 
+  /** Сколько кругов страховка уже прождала. */
+  private fallbackRounds = 0;
+
+  /** Раскладка на момент завода круга: по ней видно, узнал ли список новое. */
+  private fallbackRevision = 0;
+
   constructor(options: IRenderReadinessOptions) {
     this.options = options;
   }
@@ -57,8 +75,28 @@ export class RenderReadiness {
   scheduleFallback(): void {
     if (this.fallbackTimeout || !this.options.isPending()) return;
 
+    this.fallbackRevision = this.options.getLayoutRevision();
+
     this.fallbackTimeout = setTimeout(() => {
       this.fallbackTimeout = undefined;
+
+      // Список ещё узнаёт размеры: за круг замеры снова меняли раскладку.
+      const learning =
+        this.options.getLayoutRevision() !== this.fallbackRevision;
+
+      // Ждать есть чего в двух случаях. Стартовая позиция ещё доводится: команда
+      // могла уже уйти, но целевые контейнеры всё ещё ждут нативный commit и
+      // измерение. Либо замеры вообще ещё идут: показанный сейчас кадр
+      // переложится на глазах.
+      const waiting = this.options.hasInitialTarget() || learning;
+
+      if (waiting && this.fallbackRounds < MAX_FALLBACK_ROUNDS) {
+        this.fallbackRounds += 1;
+        this.scheduleFallback();
+
+        return;
+      }
+
       this.options.finish();
     }, READY_FALLBACK_MS);
   }

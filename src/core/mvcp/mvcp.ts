@@ -1,3 +1,4 @@
+import { anchorListScrollDebug } from "../../debug/scroll-debug";
 import type { ListMetrics, ListStore } from "../../model";
 import { listPerf } from "../../perf";
 import type { ScrollAdapterRef } from "../scroll";
@@ -147,6 +148,7 @@ export class MaintainVisibleContentPosition {
 
     if (captured.length === 0) {
       listPerf.count("mvcpNoAnchor");
+      anchorListScrollDebug.log("mvcp", { reason: _reason, anchor: "нет" });
 
       return scroll;
     }
@@ -156,6 +158,11 @@ export class MaintainVisibleContentPosition {
     if (!resolved) {
       listPerf.count("mvcpNoAnchor");
       this.residual = 0;
+      anchorListScrollDebug.log("mvcp", {
+        reason: _reason,
+        anchor: "не пережил",
+        candidates: captured.length,
+      });
 
       return scroll;
     }
@@ -166,7 +173,7 @@ export class MaintainVisibleContentPosition {
     // и задумано, но именно здесь компенсация опирается на другую строку.
     if (candidate > 0) listPerf.count("mvcpFallbackAnchor");
 
-    return this.applyShift(anchor, position, scroll);
+    return this.applyShift(anchor, position, scroll, _reason, candidate);
   }
 
   /** Расчёт и применение сдвига по выжившему якорю. */
@@ -174,6 +181,8 @@ export class MaintainVisibleContentPosition {
     anchor: IAnchor,
     position: number,
     scroll: number,
+    reason: string,
+    candidate: number,
   ): number {
     const { getScrollLength, getContentSize } = this.options;
     const scrollLength = getScrollLength();
@@ -198,6 +207,7 @@ export class MaintainVisibleContentPosition {
 
     if (Math.abs(solution.applied) < MIN_SHIFT) {
       this.reportMiss(anchor, position, scroll, solution.settled);
+      this.reportShift(reason, anchor, candidate, moved, 0, solution.lost);
 
       return solution.settled;
     }
@@ -209,8 +219,41 @@ export class MaintainVisibleContentPosition {
     const next = solution.settled + solution.applied;
 
     this.reportMiss(anchor, position, scroll, next);
+    this.reportShift(
+      reason,
+      anchor,
+      candidate,
+      moved,
+      solution.applied,
+      solution.lost,
+    );
 
     return next;
+  }
+
+  /**
+   * Что компенсация сделала на этом проходе — для диагностики.
+   *
+   * `moved` — на сколько уехал якорь, `applied` — сколько из этого доехало до
+   * смещения. Расхождение между ними и есть та величина, на которую дёрнется
+   * картинка.
+   */
+  private reportShift(
+    reason: string,
+    anchor: IAnchor,
+    candidate: number,
+    moved: number,
+    applied: number,
+    lost: number,
+  ): void {
+    anchorListScrollDebug.log("mvcp", {
+      reason,
+      anchor: anchor.index,
+      candidate,
+      moved,
+      applied,
+      lost,
+    });
   }
 
   /**
@@ -227,13 +270,26 @@ export class MaintainVisibleContentPosition {
     scroll: number,
     next: number,
   ): void {
-    if (!listPerf.enabled) return;
+    if (!listPerf.enabled && !anchorListScrollDebug.enabled) return;
 
-    const error = Math.abs(position - next - (anchor.position - scroll));
+    const before = anchor.position - scroll;
+    const after = position - next;
+    const error = Math.abs(after - before);
 
     listPerf.sample("mvcpErrorPx", error);
 
     if (error >= 1) listPerf.count("mvcpMissed");
+
+    // Расстояние опорной строки до верхней кромки до изменения и после. Оно и
+    // есть то, что видно глазом: разошлось — строка уехала под пальцем.
+    if (error >= 1) {
+      anchorListScrollDebug.log("miss", {
+        anchor: anchor.index,
+        before,
+        after,
+        error,
+      });
+    }
   }
 
   /** Событие скролла отправлено до применения сдвига — его нужно отбросить. */
