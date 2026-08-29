@@ -1,5 +1,30 @@
 # Changelog
 
+# [1.0.0](https://github.com/epifanovmd/anchor-list/compare/v0.3.0...v1.0.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **layout:** alignItemsAtEnd не прижимал короткий контент к низу ([ac79e97](https://github.com/epifanovmd/anchor-list/commit/ac79e970df0b2d3b96e0439ee9a0a02282d0a0cb))
+
+
+### Features
+
+* **scroll:** нижний отступ списка задаётся одним значением ([7654473](https://github.com/epifanovmd/anchor-list/commit/76544731585e92a67c77d5a359881292f84a1918))
+
+
+### BREAKING CHANGES
+
+* **scroll:** `insetEnd` теперь отдаёт списку и само место — распорку в конце
+контента ставит он сам. Свою распорку из `ListFooterComponent` нужно убрать,
+иначе отступ снизу будет двойным. Ручной подъём смещения под клавиатуру больше
+не нужен: `refScrollView`, `onLayout`, `onContentSizeChange` и оба
+`onScroll*Drag` для этого подключать не надо.
+* **scroll:** `alignItemsAtEndPadding` убран из состояния списка — и из
+сигналов, и из `sharedValues`. Выравнивание короткого контента стало трансформом
+слоя контейнеров: в высоту контента оно не входит, и короткий список больше не
+прокручивается на её величину.
+
 # [0.3.0](https://github.com/epifanovmd/anchor-list/compare/v0.2.0...v0.3.0) (2026-08-28)
 
 
