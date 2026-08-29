@@ -30,14 +30,6 @@ const createAlign = (count = 2, enabled = true) => {
 };
 
 describe("AlignItemsAtEnd", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   it("молчит, пока проп не задан", () => {
     const { store, align } = createAlign(2, false);
 
@@ -65,42 +57,22 @@ describe("AlignItemsAtEnd", () => {
     expect(store.peek("alignItemsAtEndPadding")).toBe(0);
   });
 
-  it("удерживает высоту контента на кадр при уменьшении распорки", () => {
-    const { store, align, setCount } = createAlign(2);
+  // Сигнал `totalSize` — высота элементов без распорок: по нему слой
+  // контейнеров задаёт свою высоту, а распорка добавляется снаружи. Подмена
+  // делала слой выше содержимого, и последняя строка вставала не у нижней
+  // кромки, а выше неё на размер распорки.
+  it("не подменяет суммарную высоту элементов", () => {
+    const { store, metrics, align, setCount } = createAlign(2);
 
+    store.set("totalSize", metrics.getTotalSize());
     align.update();
-    store.set("totalSize", 200);
+
+    expect(store.peek("totalSize")).toBe(200);
 
     setCount(4);
-    align.update();
-
-    // Иначе ScrollView сожмёт контент раньше, чем разложены новые позиции.
-    expect(store.peek("totalSize")).toBe(500);
-
-    jest.advanceTimersByTime(16);
-
-    expect(store.peek("totalSize")).toBe(500);
-  });
-
-  it("не удерживает высоту, когда распорка растёт", () => {
-    const { store, align, setCount } = createAlign(4);
-
-    align.update();
-    store.set("totalSize", 400);
-
-    setCount(2);
+    store.set("totalSize", metrics.getTotalSize());
     align.update();
 
     expect(store.peek("totalSize")).toBe(400);
-  });
-
-  it("ничего не делает, когда распорка не изменилась", () => {
-    const { store, align } = createAlign(2);
-
-    align.update();
-    store.set("totalSize", 999);
-    align.update();
-
-    expect(store.peek("totalSize")).toBe(999);
   });
 });

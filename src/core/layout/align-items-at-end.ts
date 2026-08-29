@@ -1,8 +1,5 @@
 import type { ListMetrics, ListStore } from "../../model";
 
-/** Сколько удерживать прежнюю высоту контента при её уменьшении, мс. */
-const HOLD_CONTENT_SIZE_MS = 16;
-
 /** Зависимости распорки, прижимающей короткий контент к концу. */
 export interface IAlignItemsAtEndOptions {
   store: ListStore;
@@ -18,9 +15,11 @@ export interface IAlignItemsAtEndOptions {
  * Зачем нужна: в переписке первые сообщения обязаны стоять внизу экрана, а не
  * висеть под навбаром. Пока контента меньше экрана, разницу добирает распорка.
  *
- * Какую проблему решает: при уменьшении распорки суммарная высота удерживается
- * на кадр. Иначе ScrollView сожмёт контент раньше, чем разложены новые позиции,
- * и скролл дёрнется — новое сообщение приезжает вместе с прыжком.
+ * Какую проблему решает: высоту элементов ({@link ListMetrics.getTotalSize})
+ * распорка не трогает — она добирается снаружи слоя контейнеров. Слой задаёт
+ * свою высоту тем же сигналом `totalSize`, и подмешанная в него распорка
+ * сделала бы слой выше содержимого: последняя строка встала бы не у нижней
+ * кромки, а выше неё ровно на распорку.
  */
 export class AlignItemsAtEnd {
   private readonly options: IAlignItemsAtEndOptions;
@@ -39,16 +38,6 @@ export class AlignItemsAtEnd {
     const next = Math.max(0, getScrollLength() - metrics.getTotalSize());
 
     if (next === previous) return;
-
-    if (next < previous) {
-      const held = (store.peek("totalSize") ?? 0) + previous;
-
-      store.set("totalSize", held);
-
-      setTimeout(() => {
-        store.set("totalSize", metrics.getTotalSize() + next);
-      }, HOLD_CONTENT_SIZE_MS);
-    }
 
     store.set("alignItemsAtEndPadding", next);
   }
