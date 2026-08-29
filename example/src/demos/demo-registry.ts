@@ -54,7 +54,7 @@ export const DEMOS: IDemoEntry[] = [
   {
     id: "hold-position",
     title: "Компенсация позиции",
-    description: "Вставка, удаление и рост строк выше вьюпорта по кнопке",
+    description: "Вставка, удаление и рост строк выше вьюпорта и на экране",
     covers: ["maintainVisibleContentPosition", "getFixedItemSize"],
     screen: HoldPositionDemo,
   },

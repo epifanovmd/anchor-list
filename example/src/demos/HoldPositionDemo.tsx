@@ -35,10 +35,15 @@ interface IHoldPositionDemoProps {
 /**
  * Стенд компенсации позиции.
  *
- * Изменения вносятся кнопками строго выше вьюпорта — там, где пользователь их
- * не видит и потому не должен почувствовать. Если компенсация работает,
+ * Часть кнопок вносит изменения строго выше вьюпорта — там, где пользователь
+ * их не видит и потому не должен почувствовать. Если компенсация работает,
  * смещение скролла меняется ровно на высоту изменения, а видимая строка
  * остаётся на месте.
+ *
+ * Остальные меняют то, на что пользователь смотрит: удаляют и растягивают
+ * саму якорную строку. Компенсация в этих случаях либо переходит на соседа,
+ * либо не делает ничего — и то и другое задумано, но проверяется только
+ * глазами, поэтому кнопки и нужны.
  */
 export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
   const bottomInset = useBottomInset();
@@ -85,6 +90,32 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
     () => listRef.current?.getVisibleRange().start ?? 0,
     [],
   );
+
+  /**
+   * Строка, за которую держится компенсация: первая, лежащая ниже кромки
+   * целиком.
+   *
+   * Не то же самое, что начало видимого диапазона: строка, торчащая над
+   * кромкой, видна лишь частью и якорем не становится, пока во вьюпорте есть
+   * другие. Изменять нужно именно якорь — только на нём видно, что делает
+   * компенсация, когда меняется то, на что пользователь смотрит.
+   */
+  const getVisibleAnchorIndex = useCallback(() => {
+    const list = listRef.current;
+
+    if (!list) return undefined;
+
+    const scroll = list.getScrollOffset();
+    const { start, end } = list.getVisibleRange();
+
+    for (let index = start; index <= end; index++) {
+      const position = list.getPositionAtIndex(index);
+
+      if (position !== undefined && position >= scroll) return index;
+    }
+
+    return undefined;
+  }, []);
 
   const report = useCallback((action: string, before: number) => {
     // Смещение сравнивается на следующем кадре — компенсация применяется в нём.
@@ -157,6 +188,61 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
     report("строка выше выросла", before);
   }, [getAnchorIndex, report]);
 
+  /**
+   * Удаление той самой строки, за которую держится компенсация.
+   *
+   * Якорь не переживает изменение, и опорой становится следующий из снятых
+   * кандидатов: строка под удалённой остаётся ровно на своём месте экрана, а
+   * освободившееся место закрывает то, что было выше. В замере это «запасной
+   * якорь», а в строке состояния — смещение скролла, уменьшившееся на высоту
+   * удалённой строки.
+   */
+  const removeVisible = useCallback(() => {
+    const anchor = getVisibleAnchorIndex();
+    const before = listRef.current?.getScrollOffset() ?? 0;
+
+    if (anchor === undefined) {
+      setStatus("во вьюпорте нет строки целиком — прокрутите список");
+
+      return;
+    }
+
+    setRows(current => [
+      ...current.slice(0, anchor),
+      ...current.slice(anchor + 1),
+    ]);
+
+    report("удалена видимая строка", before);
+  }, [getVisibleAnchorIndex, report]);
+
+  /**
+   * Рост той же строки.
+   *
+   * Компенсации здесь быть не должно: позиция якоря не изменилась, он растёт
+   * вниз — и всё, что под ним, законно уезжает. Смещение скролла обязано
+   * остаться прежним, а верх якорной строки — не сдвинуться ни на пиксель.
+   */
+  const growVisible = useCallback(() => {
+    const anchor = getVisibleAnchorIndex();
+    const before = listRef.current?.getScrollOffset() ?? 0;
+
+    if (anchor === undefined) {
+      setStatus("во вьюпорте нет строки целиком — прокрутите список");
+
+      return;
+    }
+
+    setRows(current =>
+      current.map((row, index) =>
+        index === anchor && row.type === "message"
+          ? { ...row, height: GROWN_HEIGHT }
+          : row,
+      ),
+    );
+
+    report("видимая строка выросла", before);
+  }, [getVisibleAnchorIndex, report]);
+
   const insertBelow = useCallback(() => {
     const before = listRef.current?.getScrollOffset() ?? 0;
     const anchor = listRef.current?.getVisibleRange().end ?? 0;
@@ -213,6 +299,8 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
           <ActionChip title={"−3 выше"} onPress={removeAbove} />
           <ActionChip title={"растянуть выше"} onPress={growAbove} />
           <ActionChip title={"+5 ниже"} onPress={insertBelow} />
+          <ActionChip title={"−1 видимую"} onPress={removeVisible} />
+          <ActionChip title={"растянуть видимую"} onPress={growVisible} />
         </ChipRow>
       </ControlPanel>
 
