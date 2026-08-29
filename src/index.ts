@@ -33,6 +33,22 @@ export { anchorListStickyDebug } from "./debug";
 export { setStickyDebug } from "./debug/sticky-debug-flag";
 
 /**
+ * Диагностика стартовой позиции: печатает по строке на попытку доводки — цель,
+ * метрики, по которым она посчиталась, и чем всё кончилось. Выключена по
+ * умолчанию.
+ */
+export {
+  anchorListInitialScrollDebug,
+  setInitialScrollDebug,
+} from "./debug/initial-scroll-debug";
+
+/**
+ * Диагностика дрожания при прокрутке: замеры, пришедшие на ходу, компенсация
+ * позиции и незакрытые пустоты вьюпорта. Выключена по умолчанию.
+ */
+export { anchorListScrollDebug, setScrollDebug } from "./debug/scroll-debug";
+
+/**
  * Замер производительности списка.
  *
  * Выключен по умолчанию и стоит одной проверки флага на точку замера. Включается

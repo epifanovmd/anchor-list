@@ -26,8 +26,9 @@ yarn check     # линт + типы + тесты, то же гоняет CI
 компенсацию позиции. Тесты ядра этого не видят — см. ниже.
 
 Если причину найти не удаётся, гадать в коде нельзя. Включить диагностику
-(`setStickyDebug`, `useAnchorListPerf`), снять лог с устройства и разбирать по
-числам — см. [troubleshooting.md](troubleshooting.md).
+(`setStickyDebug`, `setInitialScrollDebug`, `setScrollDebug`,
+`useAnchorListPerf`), снять лог с устройства и разбирать по числам — см.
+[troubleshooting.md](troubleshooting.md).
 
 ---
 
@@ -162,6 +163,8 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 Для этого есть восемь стендов в [`example/`](../example), по одному на механику,
 и встроенная диагностика: `setStickyDebug` печатает выбор якоря и обе копии,
+`setInitialScrollDebug` — попытки доводки стартовой позиции,
+`setScrollDebug` — замеры на ходу, компенсацию и незакрытые пустоты,
 `useAnchorListPerf` — счётчики пачкой раз в секунду. Как читать отчёт —
 [performance.md](performance.md).
 
