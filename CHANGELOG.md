@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/epifanovmd/anchor-list/compare/v1.0.0...v1.0.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **scroll:** мгновенная смена нижнего отступа оставляла пустоту в конце контента ([1c276ba](https://github.com/epifanovmd/anchor-list/commit/1c276ba4d6c857431b2e8daccf91fa7a16efcfd1))
+
 # [1.0.0](https://github.com/epifanovmd/anchor-list/compare/v0.3.0...v1.0.0) (2026-08-29)
 
 

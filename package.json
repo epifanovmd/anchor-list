@@ -1,6 +1,6 @@
 {
   "name": "@epifanovmd/anchor-list",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Виртуализированный список для React Native: удержание видимой позиции, прилипающие якоря на обеих кромках, состояние на UI-потоке.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
