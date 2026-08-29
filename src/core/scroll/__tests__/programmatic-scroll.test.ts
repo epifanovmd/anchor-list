@@ -38,10 +38,28 @@ describe("ProgrammaticScroll", () => {
     expect(adapter.scrollToEnd).toHaveBeenCalledWith(false);
   });
 
-  it("мгновенный скролл заканчивается вместе с вызовом", () => {
+  it("мгновенный скролл заканчивается на событии, которое вызвал", () => {
+    // Событие приходит следующим кадром. Сними пометку вызовом — и прыжок на
+    // тысячи точек посчитается движением пользователя: по такой скорости
+    // список раздувает запас отрисовки и перестаёт компенсировать замеры.
     const { scroll } = createScroll();
 
     scroll.toOffset(300, false);
+
+    expect(scroll.isActive()).toBe(true);
+
+    scroll.onScrollEvent();
+
+    expect(scroll.isActive()).toBe(false);
+  });
+
+  it("снимает пометку по таймеру, если своего события не было", () => {
+    // Запрошенное смещение совпало с текущим или его обрезала граница контента
+    // — событию взяться неоткуда.
+    const { scroll } = createScroll();
+
+    scroll.toOffset(300, false);
+    jest.advanceTimersByTime(500);
 
     expect(scroll.isActive()).toBe(false);
   });
@@ -60,6 +78,34 @@ describe("ProgrammaticScroll", () => {
 
     jest.advanceTimersByTime(1);
     expect(scroll.isActive()).toBe(false);
+  });
+
+  it("держит цель конца после первого события и умеет довести повторно", () => {
+    const { scroll, adapter } = createScroll();
+
+    scroll.toEnd(false);
+    scroll.onScrollEvent();
+
+    expect(scroll.isActive()).toBe(true);
+    expect(scroll.isTargetingEnd()).toBe(true);
+
+    scroll.reapplyEnd();
+
+    expect(adapter.scrollToEnd).toHaveBeenCalledTimes(2);
+    expect(adapter.scrollToEnd).toHaveBeenLastCalledWith(false);
+
+    jest.advanceTimersByTime(500);
+    expect(scroll.isActive()).toBe(false);
+    expect(scroll.isTargetingEnd()).toBe(false);
+  });
+
+  it("сохраняет анимацию при повторной доводке к концу", () => {
+    const { scroll, adapter } = createScroll();
+
+    scroll.toEnd(true);
+    scroll.reapplyEnd();
+
+    expect(adapter.scrollToEnd).toHaveBeenLastCalledWith(true);
   });
 
   it("продлевает ожидание вторым скроллом", () => {
@@ -82,6 +128,7 @@ describe("ProgrammaticScroll", () => {
 
     scroll.toOffset(300, true);
     scroll.toOffset(600, false);
+    scroll.onScrollEvent();
 
     expect(scroll.isActive()).toBe(false);
 
@@ -106,5 +153,7 @@ describe("ProgrammaticScroll", () => {
 
     expect(() => scroll.toOffset(300, false)).not.toThrow();
     expect(() => scroll.toEnd(false)).not.toThrow();
+    // Невыполненная команда не должна подавлять пороги и скорость на 500 мс.
+    expect(scroll.isActive()).toBe(false);
   });
 });

@@ -37,6 +37,7 @@ describe("MaintainScrollAtEnd", () => {
     jest.useFakeTimers();
     globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
       setTimeout(() => callback(0), 16) as unknown as number;
+    globalThis.cancelAnimationFrame = handle => clearTimeout(handle);
   });
 
   afterEach(() => {
@@ -185,5 +186,16 @@ describe("MaintainScrollAtEnd", () => {
     nextFrame();
 
     expect(adapter.scrollToEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it("отменяет отложенный скролл при размонтировании", () => {
+    const { maintain, adapter } = createMaintain();
+
+    maintain.run();
+    (maintain as unknown as { dispose: () => void }).dispose();
+    nextFrame();
+
+    expect(adapter.scrollToEnd).not.toHaveBeenCalled();
+    expect(maintain.isActive()).toBe(false);
   });
 });

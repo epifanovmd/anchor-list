@@ -44,6 +44,8 @@ export class MaintainScrollAtEnd {
   private queued = false;
   /** Смещение на момент запроса — по нему видно, тронул ли список пользователь. */
   private offsetAtRequest = 0;
+  private scheduledFrame: number | undefined;
+  private settleTimeout: ReturnType<typeof setTimeout> | undefined;
 
   constructor(options: IMaintainScrollAtEndOptions) {
     this.options = options;
@@ -69,6 +71,7 @@ export class MaintainScrollAtEnd {
   cancel(): void {
     this.phase = "idle";
     this.queued = false;
+    this.clearScheduled();
   }
 
   /**
@@ -104,7 +107,10 @@ export class MaintainScrollAtEnd {
     this.phase = "pending";
     this.offsetAtRequest = this.options.adapter()?.getOffset?.() ?? 0;
 
-    requestAnimationFrame(() => this.commit());
+    this.scheduledFrame = requestAnimationFrame(() => {
+      this.scheduledFrame = undefined;
+      this.commit();
+    });
 
     return true;
   }
@@ -130,6 +136,7 @@ export class MaintainScrollAtEnd {
     const settle = () => {
       if (this.phase !== "active") return;
 
+      this.settleTimeout = undefined;
       this.phase = "idle";
       // Доводка закончилась — дальше отсчёт «тронул ли пользователь» идёт от
       // нового смещения, а не от того, что было до неё.
@@ -141,9 +148,25 @@ export class MaintainScrollAtEnd {
     };
 
     if (animated) {
-      setTimeout(settle, ANIMATED_SETTLE_MS);
+      this.settleTimeout = setTimeout(settle, ANIMATED_SETTLE_MS);
     } else {
       settle();
+    }
+  }
+
+  /** Снять отложенные переходы при размонтировании списка. */
+  dispose(): void {
+    this.cancel();
+  }
+
+  private clearScheduled(): void {
+    if (this.scheduledFrame !== undefined) {
+      cancelAnimationFrame(this.scheduledFrame);
+      this.scheduledFrame = undefined;
+    }
+    if (this.settleTimeout !== undefined) {
+      clearTimeout(this.settleTimeout);
+      this.settleTimeout = undefined;
     }
   }
 }
