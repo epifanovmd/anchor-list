@@ -37,8 +37,13 @@ export const formatListPerfReport = ({
   const { counters, stats } = window;
   const lines = [`[list·${label}] ${title} ${seconds.toFixed(1)}с`];
 
+  // Медиана и p95 отвечают на разные вопросы: первая — как список идёт обычно,
+  // вторая — где живёт рывок. Одного худшего кадра для этого мало: он бывает и
+  // от чужой работы в приложении.
   lines.push(
-    `  кадры     ${(frames.frames / seconds).toFixed(0)}fps · длинных ${
+    `  кадры     ${(frames.frames / seconds).toFixed(0)}fps · медиана ${frames.medianMs.toFixed(
+      0,
+    )}мс · p95 ${frames.p95Ms.toFixed(0)}мс · длинных ${
       frames.longFrames
     } · худший ${frames.worstMs.toFixed(0)}мс`,
   );

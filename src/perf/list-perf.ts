@@ -1,5 +1,4 @@
-import type { IFrameStats } from "./frame-monitor";
-import { FrameMonitor } from "./frame-monitor";
+import { createFrameStats, FrameMonitor } from "./frame-monitor";
 import type {
   IListPerfWindow,
   ListPerfCounter,
@@ -7,19 +6,15 @@ import type {
 } from "./list-perf-metrics";
 import {
   createListPerfWindow,
+  describeListPerfMetrics,
   mergeListPerfWindow,
   perfNow,
 } from "./list-perf-metrics";
+import type { IListPerfReport } from "./list-perf-report";
 import { formatListPerfReport } from "./list-perf-report";
 
 /** Как часто накопленное уходит в консоль, мс. */
 const FLUSH_INTERVAL_MS = 1000;
-
-const createFrameStats = (): IFrameStats => ({
-  frames: 0,
-  longFrames: 0,
-  worstMs: 0,
-});
 
 /**
  * Замер списка: счётчики копятся, в консоль уходят пачкой раз в секунду.
@@ -43,6 +38,9 @@ class ListPerf {
   private window: IListPerfWindow = createListPerfWindow();
   private session: IListPerfWindow = createListPerfWindow();
   private sessionFrames = createFrameStats();
+  /** Куда уходит отчёт; подменяется стендом, который рисует числа сам. */
+  private sink: (report: IListPerfReport, text: string) => void = (_, text) =>
+    console.log(text);
 
   /** Начать сессию; `label` попадает в каждую строку лога. */
   start(label: string): void {
@@ -70,15 +68,50 @@ class ListPerf {
     if (this.timer !== undefined) clearInterval(this.timer);
     this.timer = undefined;
 
-    console.log(
-      formatListPerfReport({
-        label: this.label,
-        title: "итог",
-        durationMs: perfNow() - this.startedAt,
-        frames: this.sessionFrames,
-        window: this.session,
-      }),
-    );
+    this.report({
+      label: this.label,
+      title: "итог",
+      durationMs: perfNow() - this.startedAt,
+      frames: this.sessionFrames,
+      window: this.session,
+    });
+  }
+
+  /**
+   * Куда отдавать готовый отчёт.
+   *
+   * Зачем: стенду числа нужны на экране, а не в логе — на устройстве консоль
+   * читать неоткуда, да и сама печать стоит кадров, которые же и меряются.
+   * Отчёт отдаётся и структурой, и готовой строкой: рисовать по нему можно
+   * что угодно, а печатать — тем же форматом, что и всегда.
+   */
+  setSink(sink: (report: IListPerfReport, text: string) => void): void {
+    this.sink = sink;
+  }
+
+  /**
+   * Накопленное за сессию на текущий момент.
+   *
+   * Нужно тому, кто показывает числа сам: окно закрывается раз в секунду, а
+   * экран обновляется чаще.
+   */
+  getSnapshot(): IListPerfReport {
+    return {
+      label: this.label,
+      title: "сессия",
+      durationMs: perfNow() - this.startedAt,
+      frames: this.sessionFrames,
+      window: this.session,
+    };
+  }
+
+  /** Справка по метрикам: что каждая считает и о чём говорит. */
+  help(): string {
+    const text = describeListPerfMetrics();
+
+    console.log(text);
+
+    return text;
   }
 
   /** Отметить событие; вызов при выключенном замере ничего не стоит. */
@@ -99,6 +132,11 @@ class ListPerf {
     if (value > stat.max) stat.max = value;
   }
 
+  /** Отчёт наружу: структурой и готовой строкой сразу. */
+  private report(report: IListPerfReport): void {
+    this.sink(report, formatListPerfReport(report));
+  }
+
   /** Печать окна и перенос накопленного в итог сессии. */
   private flush(): void {
     const frames = this.frameMonitor.take();
@@ -109,15 +147,13 @@ class ListPerf {
       this.window.counters.rangeCalc > 0;
 
     if (hasActivity) {
-      console.log(
-        formatListPerfReport({
-          label: this.label,
-          title: "окно",
-          durationMs,
-          frames,
-          window: this.window,
-        }),
-      );
+      this.report({
+        label: this.label,
+        title: "окно",
+        durationMs,
+        frames,
+        window: this.window,
+      });
     }
 
     mergeListPerfWindow(this.session, this.window);
@@ -127,6 +163,13 @@ class ListPerf {
       this.sessionFrames.worstMs,
       frames.worstMs,
     );
+    // Процентили сессии — худшие из оконных, а не среднее: сложить их нельзя,
+    // а брать большее честно — так видно самое плохое окно прогона.
+    this.sessionFrames.medianMs = Math.max(
+      this.sessionFrames.medianMs,
+      frames.medianMs,
+    );
+    this.sessionFrames.p95Ms = Math.max(this.sessionFrames.p95Ms, frames.p95Ms);
 
     this.window = createListPerfWindow();
     this.windowStartedAt = perfNow();

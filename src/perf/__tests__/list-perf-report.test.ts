@@ -15,7 +15,13 @@ const report = (
     label: "наш",
     title: "окно",
     durationMs: 1000,
-    frames: { frames: 58, longFrames: 3, worstMs: 48.2 },
+    frames: {
+      frames: 58,
+      longFrames: 3,
+      worstMs: 48.2,
+      medianMs: 16,
+      p95Ms: 31,
+    },
     window,
   });
 };
@@ -26,7 +32,9 @@ describe("formatListPerfReport", () => {
 
     expect(lines).toHaveLength(2);
     expect(lines[0]).toBe("[list·наш] окно 1.0с");
-    expect(lines[1]).toBe("  кадры     58fps · длинных 3 · худший 48мс");
+    expect(lines[1]).toBe(
+      "  кадры     58fps · медиана 16мс · p95 31мс · длинных 3 · худший 48мс",
+    );
   });
 
   it("считает среднее и максимум по каждой величине", () => {

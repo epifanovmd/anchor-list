@@ -43,8 +43,14 @@ export { anchorListDebug, setAnchorListDebug } from "./debug";
 /**
  * Замер производительности списка.
  *
+ * Отдельная от диагностики система и с другим вопросом: диагностика объясняет
+ * один кадр, замер — сколько всё это стоило за окно и сравнимо ли с прошлым
+ * прогоном. Метрики подписаны в каталоге: `anchorListPerf.help()`.
+ *
  * Выключен по умолчанию и стоит одной проверки флага на точку замера. Включается
  * на время стенда: `anchorListPerf.start(label)` или `useAnchorListPerf(label)`.
+ * Отчёт можно забрать себе — `anchorListPerf.setSink(...)`, — чтобы рисовать
+ * числа на экране, а не читать их в логе.
  */
 export type {
   ListPerfCounter as AnchorListPerfCounter,
