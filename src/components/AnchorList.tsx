@@ -111,6 +111,10 @@ const AnchorListInner = <TItem,>(
   // обязана уступать жесту и без чужой подписки.
   const isDragging = useSharedValue(false);
   const isMomentum = useSharedValue(false);
+  // Список показан. Зеркало сигнала, а не подписка в React: по нему нижний
+  // отступ решает, его ли сейчас дело двигать смещение, — а решает он это в
+  // том же кадре, в котором идёт клавиатура.
+  const isRevealed = useSharedValue(false);
   // Якоря, которые слой прилипших копий уже нарисовал: -1 — копии нет.
   const pinnedStartIndex = useSharedValue(-1);
   const pinnedEndIndex = useSharedValue(-1);
@@ -128,6 +132,7 @@ const AnchorListInner = <TItem,>(
     scrollOffset,
     isDragging,
     isMomentum,
+    revealed: isRevealed,
   });
 
   /**
@@ -225,6 +230,7 @@ const AnchorListInner = <TItem,>(
       totalSize: edgeTotalSize,
       headerSize: edgeHeaderSize,
       footerSize: edgeFooterSize,
+      readyToRender: isRevealed,
     }),
     [
       edgeContentSize,
@@ -233,6 +239,7 @@ const AnchorListInner = <TItem,>(
       edgeTotalSize,
       edgeHeaderSize,
       edgeFooterSize,
+      isRevealed,
     ],
   );
 

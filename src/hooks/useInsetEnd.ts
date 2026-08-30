@@ -42,6 +42,13 @@ export interface IInsetEndOptions {
   /** Палец на экране и инерция после броска: тогда позицией управляет жест. */
   isDragging: SharedValue<boolean>;
   isMomentum: SharedValue<boolean>;
+  /**
+   * Список показан пользователю — зеркало сигнала `readyToRender`.
+   *
+   * До показа смещением распоряжается доводка стартовой позиции, и трогать его
+   * отсюда нельзя: см. реакцию ниже.
+   */
+  revealed: SharedValue<boolean>;
 }
 
 /** Низ списка на UI-потоке. */
@@ -81,6 +88,7 @@ export const useInsetEnd = ({
   scrollOffset,
   isDragging,
   isMomentum,
+  revealed,
 }: IInsetEndOptions): IInsetEnd => {
   const alignOffset = useSharedValue(0);
   const spacer = useSharedValue(0);
@@ -154,6 +162,7 @@ export const useInsetEnd = ({
             from,
             to: layout.scroll,
             owned,
+            revealed: revealed.value,
           }),
         });
       }
@@ -165,6 +174,15 @@ export const useInsetEnd = ({
 
       appliedDelta.value = inset - previousInset;
       appliedInset.value = inset;
+
+      // Пока список не показан, смещение принадлежит доводке стартовой позиции,
+      // а держать отступом нечего: видимого содержимого ещё нет. Начальное
+      // значение отступа приходит приложением не первым кадром — безопасная
+      // зона доезжает следующим, — и подъём под неё увёл бы первую строку за
+      // верхнюю кромку ровно на её высоту. Отсчёт при этом продолжается: к
+      // показу отступ уже учтён, и лишнего движения не будет.
+      if (!revealed.value) return;
+
       desiredScroll.value = layout.scroll;
       pending.value =
         !owned &&
