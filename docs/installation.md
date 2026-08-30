@@ -131,9 +131,8 @@ import {
   useAnchorListValue,
   anchorListPerf,
   useAnchorListPerf,
-  setStickyDebug,
-  setInitialScrollDebug,
-  setScrollDebug,
+  anchorListDebug,
+  setAnchorListDebug,
 } from "@epifanovmd/anchor-list";
 
 import type {

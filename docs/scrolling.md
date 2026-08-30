@@ -42,9 +42,9 @@ type AnchorListInitialScroll =
 по строке на попытку с целью и метриками, по которым та посчиталась.
 
 ```ts
-import { setInitialScrollDebug } from "@epifanovmd/anchor-list";
+import { setAnchorListDebug } from "@epifanovmd/anchor-list";
 
-setInitialScrollDebug(true);
+setAnchorListDebug("initial");
 ```
 
 Пока стартовый скролл активен, пороги кромок, удержание позиции и автоприлипание
