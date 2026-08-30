@@ -38,6 +38,12 @@ const logThrottled = channel.event("throttled", {
   fields: { value: "величина" },
 });
 
+const logDetail = channel.event("detail", {
+  about: "поштучная подробность",
+  detail: true,
+  fields: { value: "величина" },
+});
+
 const logProblem = channel.event("problem", {
   about: "механика не сделала своего дела",
   problem: true,
@@ -155,6 +161,27 @@ describe("канал диагностики", () => {
     expect(lines[0]).toContain("value=1");
     expect(lines[1]).toContain("value=3");
     jest.useRealTimers();
+  });
+
+  it("не включает подробности вместе с каналом", () => {
+    setAnchorListDebug("scroll");
+
+    logPlain({ a: 1, b: 2 });
+    logDetail({ value: 1 });
+
+    // Подробностей на кадр приходится по нескольку: включённые каналом, они
+    // вытесняют из лога то, ради чего его открыли.
+    expect(lines).toHaveLength(1);
+    expect(channel.on("detail")).toBe(false);
+  });
+
+  it("печатает подробность, когда её назвали по имени", () => {
+    setAnchorListDebug({ scroll: ["detail"] });
+
+    logDetail({ value: 1 });
+
+    expect(lines).toHaveLength(1);
+    expect(channel.on("detail")).toBe(true);
   });
 
   it("включает только названные события канала", () => {

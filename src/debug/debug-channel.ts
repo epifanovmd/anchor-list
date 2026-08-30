@@ -44,14 +44,28 @@ export interface IDebugEventSpec<TFields extends DebugFields> {
   /** По умолчанию — `"always"`. */
   repeat?: DebugRepeat;
   /**
-   * По каким величинам считать строку изменившейся — для `repeat: "changes"`.
+   * Подробность: включается только по имени, а не вместе с каналом.
+   *
+   * Зачем: у механики есть обзорные события — где список стоит, что пошло не
+   * так, — и поштучные, которых на каждый кадр приходится по нескольку.
+   * Включённые вместе с каналом, вторые топят первые: на прокрутке в логе
+   * остаётся возня с контейнерами, а не то, ради чего его открыли.
+   *
+   * Числа за окно по таким событиям и так есть — их считает замер. Здесь они
+   * нужны поштучно и только тогда, когда разбор дошёл именно до них:
+   * `setAnchorListDebug({ layout: ["recycle"] })`.
+   */
+  detail?: boolean;
+  /**
+   * По каким величинам считать строку изменившейся.
    *
    * Нужно там, где рядом с состоянием печатается живая величина: диапазон
    * отрисовки меняется редко, а смещение, по которому он посчитан, — каждый
    * кадр. Сравнивая строку целиком, отсечение повторов не отсекло бы ничего, и
    * состояние утонуло бы в потоке собственного контекста.
    *
-   * По умолчанию сравнивается вся строка.
+   * Работает и вместе с интервалом: тогда строка печатается не чаще раза в
+   * интервал **и** только если названные величины изменились.
    */
   compare?: (keyof TFields & string)[];
   /**
@@ -135,6 +149,14 @@ export const createDebugChannel = (
   about: string,
 ): IDebugChannel => {
   const events: IDebugEventDescriptor[] = [];
+  /** Имена событий-подробностей: их не включает канал целиком. */
+  const details = new Set<string>();
+
+  /** Событие печатается: обзорное — с каналом, подробность — только по имени. */
+  const isOn = (event: string): boolean =>
+    details.has(event)
+      ? debugRegistry.isEventListed(name, event)
+      : debugRegistry.isEventEnabled(name, event);
 
   debugRegistry.register({ name, about, events });
 
@@ -146,7 +168,7 @@ export const createDebugChannel = (
     },
 
     on(event: string): boolean {
-      return debugRegistry.isEventEnabled(name, event);
+      return isOn(event);
     },
 
     worklet<TFields extends DebugFields>(
@@ -157,7 +179,9 @@ export const createDebugChannel = (
         name: eventName,
         about: spec.about,
         fields: spec.fields,
+        detail: spec.detail ?? false,
       });
+      if (spec.detail) details.add(eventName);
 
       return eventName;
     },
@@ -170,7 +194,9 @@ export const createDebugChannel = (
         name: eventName,
         about: spec.about,
         fields: spec.fields,
+        detail: spec.detail ?? false,
       });
+      if (spec.detail) details.add(eventName);
 
       const repeat = spec.repeat ?? "always";
       const problem = spec.problem ?? false;
@@ -182,7 +208,7 @@ export const createDebugChannel = (
       let generation = debugRegistry.getGeneration();
 
       return values => {
-        if (!debugRegistry.isEventEnabled(name, eventName)) return;
+        if (!isOn(eventName)) return;
 
         // Диагностику включили заново: то, что было напечатано в прошлый раз,
         // на экране давно не видно, и гасить по нему первую строку нельзя —
@@ -209,7 +235,17 @@ export const createDebugChannel = (
             ? ""
             : `${values[spec.key] === undefined ? "—" : String(values[spec.key])}`;
 
-        if (repeat === "changes") {
+        // Интервал и сравнение работают вместе: поток состояния прореживается
+        // временем, а внутри интервала печатается только то, что изменилось.
+        if (repeat !== "always" && repeat !== "changes") {
+          const now = debugNow();
+
+          if (now - (lastAt.get(key) ?? -Infinity) < repeat.everyMs) return;
+
+          lastAt.set(key, now);
+        }
+
+        if (repeat === "changes" || spec.compare) {
           const compared = spec.compare
             ? spec.compare
                 .map(field => formatDebugValue(values[field]))
@@ -219,12 +255,6 @@ export const createDebugChannel = (
           if (lastLine.get(key) === compared) return;
 
           lastLine.set(key, compared);
-        } else if (repeat !== "always") {
-          const now = debugNow();
-
-          if (now - (lastAt.get(key) ?? -Infinity) < repeat.everyMs) return;
-
-          lastAt.set(key, now);
         }
 
         debugRegistry.emit(

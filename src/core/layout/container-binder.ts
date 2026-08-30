@@ -55,6 +55,8 @@ export class ContainerBinder {
   private readonly options: IContainerBinderOptions;
   private previousRequests: IContainerRequest[] = [];
   private previousRevision = -1;
+  /** Сколько контейнеров было на прошлой напечатанной раздаче — для диагностики. */
+  private previousCount = -1;
 
   constructor(options: IContainerBinderOptions) {
     this.options = options;
@@ -151,6 +153,21 @@ export class ContainerBinder {
     released: number,
     cached: boolean,
   ): void {
+    // Раздача, ничего не изменившая, — половина всех проходов: диапазон
+    // сдвинулся внутри уже привязанного набора, либо это второй проход того же
+    // кадра после замеров. Строка о ней ничего не добавляет к соседней
+    // `range`, а в логе таких строк больше, чем всех остальных вместе. Сколько
+    // их было, считает замер.
+    if (
+      allocation.changed.length === 0 &&
+      released === 0 &&
+      allocation.count === this.previousCount
+    ) {
+      return;
+    }
+
+    this.previousCount = allocation.count;
+
     logLayoutBind({
       requests: requests.length,
       containers: allocation.count,

@@ -57,6 +57,14 @@ import type { IAnchorListRuntimeProps } from "./runtime-props";
 const MIN_BLANK_PX = 1;
 
 /**
+ * Меньшее расхождение своей высоты контента с нативной — округление раскладки.
+ *
+ * Yoga кладёт раскладку на сетку пикселей, а список складывает высоту из
+ * дробных замеров: доли точки расходятся всегда и ни о чём не говорят.
+ */
+const MIN_CONTENT_DIFF_PX = 0.5;
+
+/**
  * Во сколько раз дельта события должна разойтись с прошлой, чтобы считаться
  * рывком.
  *
@@ -392,16 +400,23 @@ export class ListRuntime<TItem> {
 
     if (layoutDebug.enabled) {
       const own = this.contentSize.get();
+      const diff = height - own;
 
-      logLayoutContent({
-        own,
-        native: height,
-        diff: signed(height - own),
-        items: this.metrics.getTotalSize(),
-        header: this.store.peek("headerSize"),
-        footer: this.store.peek("footerSize"),
-        spacer: this.store.peek("anchoredEndSpaceSize"),
-      });
+      // Совпавшие высоты — обычный ход дела: замер приходит каждый кадр
+      // прокрутки, и строка о совпадении вытеснила бы из лога всё остальное.
+      // Печатается только расхождение — то, из-за чего граница скролла
+      // считается не по тому, что нарисовано.
+      if (Math.abs(diff) >= MIN_CONTENT_DIFF_PX) {
+        logLayoutContent({
+          own,
+          native: height,
+          diff: signed(diff),
+          items: this.metrics.getTotalSize(),
+          header: this.store.peek("headerSize"),
+          footer: this.store.peek("footerSize"),
+          spacer: this.store.peek("anchoredEndSpaceSize"),
+        });
+      }
     }
 
     // Стартовая позиция «в конец» ждала именно этого замера: без него конец

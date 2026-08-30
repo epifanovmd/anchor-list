@@ -2,6 +2,7 @@ import type {
   AnchorListDebugChannel,
   AnchorListDebugSpec,
   DebugChannelSelection,
+  IDebugEventDescriptor,
   IDebugOptions,
 } from "./debug-registry";
 import { ANCHOR_LIST_DEBUG_CHANNELS, debugRegistry } from "./debug-registry";
@@ -68,9 +69,12 @@ export const setAnchorListDebug = (spec: AnchorListDebugSpec): void => {
 /** Одна строка справки по событию: имя, частота и описание. */
 const describeEvent = (
   channel: AnchorListDebugChannel,
-  event: { name: string; about: string; fields: Record<string, string> },
+  event: IDebugEventDescriptor,
 ): string => {
-  const lines = [`  ${channel}·${event.name} — ${event.about}`];
+  // Подробность помечена прямо в справке: иначе включивший канал целиком будет
+  // ждать строк, которых по замыслу не будет.
+  const mark = event.detail ? " · подробность, включается по имени" : "";
+  const lines = [`  ${channel}·${event.name} — ${event.about}${mark}`];
 
   for (const field of Object.keys(event.fields)) {
     lines.push(`      ${field.padEnd(12)} ${event.fields[field]}`);
@@ -167,9 +171,16 @@ export const anchorListDebug = {
       lines.push(`${item.name} — ${item.about}`);
 
       if (channel === undefined) {
-        lines.push(
-          `  события: ${item.events.map(event => event.name).join(", ")}`,
-        );
+        const overview = item.events.filter(event => !event.detail);
+        const details = item.events.filter(event => event.detail);
+
+        lines.push(`  события: ${overview.map(e => e.name).join(", ")}`);
+
+        if (details.length > 0) {
+          lines.push(
+            `  подробности (по имени): ${details.map(e => e.name).join(", ")}`,
+          );
+        }
         continue;
       }
 

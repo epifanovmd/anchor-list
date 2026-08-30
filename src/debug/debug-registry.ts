@@ -51,6 +51,8 @@ export interface IDebugEventDescriptor {
   about: string;
   /** Каждая величина: что показывает и о чём говорит. */
   fields: Record<string, string>;
+  /** Подробность: включается только по имени, а не вместе с каналом. */
+  detail: boolean;
 }
 
 /** Описание канала — для справки. */
@@ -169,6 +171,19 @@ class DebugRegistry {
     const selection = this.selection.get(name);
 
     if (selection === true) return true;
+
+    return this.isEventListed(name, event);
+  }
+
+  /**
+   * Событие названо поимённо.
+   *
+   * По этому спрашивают события-подробности: канал целиком их не включает —
+   * поштучных строк на кадр приходится по нескольку, и обзор канала в них
+   * тонет.
+   */
+  isEventListed(name: AnchorListDebugChannel, event: string): boolean {
+    const selection = this.selection.get(name);
 
     return Array.isArray(selection) && selection.includes(event);
   }

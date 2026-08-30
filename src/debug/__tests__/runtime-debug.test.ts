@@ -7,6 +7,9 @@ interface IRow {
   id: string;
 }
 
+/** Пятьдесят строк по сто точек: сумма элементов, от которой считается контент. */
+const ITEMS_HEIGHT = 5000;
+
 const rows = (count: number, prefix = "k"): IRow[] =>
   Array.from({ length: count }, (_, index) => ({ id: `${prefix}${index}` }));
 
@@ -71,13 +74,34 @@ describe("диагностика на проходе ядра", () => {
     expect(linesOf("layout·recycle")).toHaveLength(0);
   });
 
-  it("печатает переработку, когда контейнер действительно сменил элемент", () => {
+  it("не печатает поштучные подробности, когда включён весь канал", () => {
+    runtime.setScroll(2000, 1000);
+
+    // Раздача и переработка идут по нескольку строк на кадр: включённые вместе
+    // с каналом, они топят обзор. Сколько их было за секунду, считает замер.
+    expect(linesOf("layout·recycle")).toHaveLength(0);
+    expect(linesOf("layout·bind")).toHaveLength(0);
+  });
+
+  it("печатает переработку, когда её назвали по имени", () => {
+    setAnchorListDebug({ layout: ["recycle"] });
     runtime.setScroll(2000, 1000);
 
     const recycled = linesOf("layout·recycle");
 
     expect(recycled.length).toBeGreaterThan(0);
     expect(recycled[0]).toMatch(/from=k\d+ to=k\d+/);
+  });
+
+  it("не печатает раздачу, ничего не изменившую", () => {
+    setAnchorListDebug({ layout: ["bind"] });
+    runtime.setScroll(2000, 1000);
+    lines.length = 0;
+
+    // Тот же диапазон: контейнеры уже привязаны, менять нечего.
+    runtime.calculateItemsInView();
+
+    expect(linesOf("layout·bind")).toHaveLength(0);
   });
 
   it("не объявляет пустотой вьюпорт скрытого списка", () => {
@@ -103,11 +127,26 @@ describe("диагностика на проходе ядра", () => {
     expect(linesOf("scroll·jump")[0]).toContain("delta=+1000");
   });
 
-  it("печатает диапазон и раздачу на каждом изменении раскладки", () => {
+  it("печатает диапазон при изменении раскладки", () => {
     runtime.setScroll(1200, 1000);
 
     expect(linesOf("layout·range").length).toBeGreaterThan(0);
-    expect(linesOf("layout·bind").length).toBeGreaterThan(0);
+  });
+
+  it("печатает высоту контента только при расхождении с нативной", () => {
+    // Замер, который список принял: своя высота сходится с нативной, и
+    // сообщать не о чем — а приходит такой замер каждый кадр прокрутки.
+    runtime.setContentSize(runtime.getContentSize() + 40);
+
+    expect(linesOf("layout·content")).toHaveLength(0);
+
+    // Замер ниже суммы элементов принят быть не может: контент не бывает ниже
+    // того, что в нём лежит, — значит замер отстал от раскладки. Вот тут
+    // граница скролла и считается не по тому, что нарисовано.
+    runtime.setContentSize(ITEMS_HEIGHT - 40);
+
+    expect(linesOf("layout·content")).toHaveLength(1);
+    expect(linesOf("layout·content")[0]).toContain("diff=-80");
   });
 
   it("печатает замер, разошедшийся с оценкой, и его компенсацию", () => {
