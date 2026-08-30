@@ -83,6 +83,17 @@ const JUMP_RATIO = 3;
 const JUMP_MIN_PX = 8;
 
 /**
+ * С каким весом новая дельта входит в обычный ход.
+ *
+ * Сравнивать с одной прошлой дельтой нельзя: события приходят неравномерно, и
+ * посреди ровной прокрутки попадается мелкое — короткий промежуток между двумя
+ * кадрами. Следующее за ним обычное событие оказывалось бы втрое больше и
+ * объявлялось рывком, хотя палец шёл ровно. Усреднение держит «обычный ход» на
+ * уровне последних нескольких событий, а не последнего.
+ */
+const JUMP_SMOOTHING = 0.3;
+
+/**
  * Через сколько тишины скролл считается остановившимся, мс.
  *
  * Скорость публикуется только на событии скролла, а когда список встал, событий
@@ -188,8 +199,13 @@ export class ListRuntime<TItem> {
    * направление переворачивалось бы через событие. См. {@link resolveFreshOffset}.
    */
   private lastEventOffset: number | undefined;
-  /** Дельта прошлого события: с ней сравнивается следующая при поиске рывка. */
-  private lastEventDelta: number | undefined;
+  /**
+   * Обычный сдвиг за событие: сглаженное среднее последних дельт.
+   *
+   * С ним сравнивается очередная дельта при поиске рывка. `undefined` — список
+   * стоял, и сравнивать не с чем: первое движение из покоя рывком не бывает.
+   */
+  private usualEventDelta: number | undefined;
   /** Меняется только когда данные или геометрия требуют полной публикации. */
   private layoutRevision = 0;
   private requestRevision = 0;
@@ -699,6 +715,9 @@ export class ListRuntime<TItem> {
       // История сбрасывается вместе со значением: следующее движение начнётся
       // с чистого листа, а не продолжит средневзвешенное через паузу.
       logScrollRest({ offset: this.scroll, velocity: this.velocity.get() });
+      // Обычный ход забывается вместе со скоростью: следующее движение начнётся
+      // с чистого листа, и сравнивать его с тем, как шёл прошлый жест, нечего.
+      this.usualEventDelta = undefined;
       this.velocity.reset();
       this.scrollDirection = 0;
       this.store.set("velocity", 0);
@@ -1305,7 +1324,7 @@ export class ListRuntime<TItem> {
     const native = this.adapter?.getOffset?.();
     const delta = offset - (previousEvent ?? offset);
     const velocity = this.velocity.get();
-    const usual = this.lastEventDelta;
+    const usual = this.usualEventDelta;
 
     logScrollEvent({
       offset,
@@ -1316,24 +1335,30 @@ export class ListRuntime<TItem> {
       own: ownMove,
     });
 
-    // Нулевая прошлая дельта — список стоял, и первое движение из покоя рывком
+    // У первого события дельта нулевая по построению: предыдущего смещения
+    // нет. Ни рывком его считать, ни складывать в обычный ход нельзя — иначе
+    // первое же настоящее движение окажется втрое больше нуля.
+    if (previousEvent === undefined) return;
+
+    // Обычного хода ещё нет — список стоял, и первое движение из покоя рывком
     // не является: сравнивать его не с чем.
     const jumped =
-      usual !== undefined &&
-      usual !== 0 &&
-      Math.abs(delta) > Math.abs(usual) * JUMP_RATIO + JUMP_MIN_PX;
+      usual !== undefined && Math.abs(delta) > usual * JUMP_RATIO + JUMP_MIN_PX;
 
     if (jumped) {
       logScrollJump({
         offset,
         delta: signed(delta),
-        usual: signed(usual),
+        usual,
         velocity,
         own: ownMove,
       });
     }
 
-    this.lastEventDelta = delta;
+    this.usualEventDelta =
+      usual === undefined
+        ? Math.abs(delta)
+        : usual * (1 - JUMP_SMOOTHING) + Math.abs(delta) * JUMP_SMOOTHING;
   }
 
   /**
