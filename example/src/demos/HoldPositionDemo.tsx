@@ -18,6 +18,7 @@ import {
   ActionChip,
   ChipRow,
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   ToggleRow,
@@ -302,6 +303,7 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
           <ActionChip title={"−1 видимую"} onPress={removeVisible} />
           <ActionChip title={"растянуть видимую"} onPress={growVisible} />
         </ChipRow>
+        <DebugToggles channels={["mvcp", "layout"]} />
       </ControlPanel>
 
       <AnchorList

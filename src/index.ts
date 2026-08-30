@@ -26,27 +26,19 @@ export { AnchorListState } from "./model";
 export * from "./types";
 
 /**
- * Диагностика прилипания: печатает выбор якоря, его геометрию у контейнера и
- * состояние worklet-а смещения. Выключена по умолчанию.
+ * Диагностика: восемь каналов по числу механик, все устроены одинаково.
+ *
+ * Канал объявляет события, событие — свои величины, каждая величина подписана;
+ * из тех же объявлений собирается справка, поэтому она не может разойтись с
+ * тем, что печатается. Всё выключено по умолчанию.
+ *
+ * ```ts
+ * anchorListDebug.help();       // какие каналы бывают и что в них
+ * setAnchorListDebug("mvcp");   // включить одну механику
+ * ```
  */
-export { anchorListStickyDebug } from "./debug";
-export { setStickyDebug } from "./debug/sticky-debug-flag";
-
-/**
- * Диагностика стартовой позиции: печатает по строке на попытку доводки — цель,
- * метрики, по которым она посчиталась, и чем всё кончилось. Выключена по
- * умолчанию.
- */
-export {
-  anchorListInitialScrollDebug,
-  setInitialScrollDebug,
-} from "./debug/initial-scroll-debug";
-
-/**
- * Диагностика дрожания при прокрутке: замеры, пришедшие на ходу, компенсация
- * позиции и незакрытые пустоты вьюпорта. Выключена по умолчанию.
- */
-export { anchorListScrollDebug, setScrollDebug } from "./debug/scroll-debug";
+export type { AnchorListDebugChannel, AnchorListDebugSpec } from "./debug";
+export { anchorListDebug, setAnchorListDebug } from "./debug";
 
 /**
  * Замер производительности списка.

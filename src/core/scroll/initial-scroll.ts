@@ -1,5 +1,11 @@
-import { anchorListInitialScrollDebug } from "../../debug/initial-scroll-debug";
+import {
+  logInitialApply,
+  logInitialFinish,
+  logInitialReveal,
+  logInitialWait,
+} from "../../debug";
 import type { AnchorListInitialScroll } from "../../types";
+import type { IInitialTargetDescription } from "./initial-offset";
 
 /**
  * Допуск попадания в цель, px.
@@ -22,7 +28,7 @@ export interface IInitialScrollOptions {
   /** Живое нативное смещение — по нему видно, доехала ли прошлая команда. */
   getLiveOffset?: () => number | undefined;
   /** Из чего сложилась цель — печатается диагностикой. */
-  describeTarget?: () => Record<string, unknown>;
+  describeTarget: () => IInitialTargetDescription;
   onFinished: () => void;
 }
 
@@ -84,9 +90,9 @@ export class InitialScroll {
     const offset = this.options.resolveOffset();
 
     if (offset === undefined) {
-      anchorListInitialScrollDebug.log("wait", {
+      logInitialWait({
         attempt: this.attempts,
-        ...this.options.describeTarget?.(),
+        ...this.options.describeTarget(),
       });
 
       return;
@@ -106,17 +112,17 @@ export class InitialScroll {
 
     this.lastApplied = offset;
 
-    anchorListInitialScrollDebug.log("apply", {
+    logInitialApply({
       attempt: this.attempts,
       offset,
       live,
       arrived,
       settled,
-      ...this.options.describeTarget?.(),
+      ...this.options.describeTarget(),
     });
 
     if (settled) {
-      anchorListInitialScrollDebug.log("finish", {
+      logInitialFinish({
         attempts: this.attempts,
         offset,
         reason: "settled",
@@ -147,13 +153,19 @@ export class InitialScroll {
     return Math.abs(live - this.lastApplied) < ARRIVAL_EPSILON;
   }
 
-  /** Прекратить доводку и показать список. */
-  finish(): void {
+  /**
+   * Прекратить доводку и показать список.
+   *
+   * @param cause чем вызван показ — печатается диагностикой: доводка дошла до
+   * цели, видимые строки измерены или сработала страховка первого показа.
+   * @param rounds сколько кругов прождала страховка.
+   */
+  finish(cause = "позиция", rounds = 0): void {
     if (this.finished) return;
 
     this.finished = true;
     this.cancelScheduledFrame();
-    anchorListInitialScrollDebug.log("reveal", { attempts: this.attempts });
+    logInitialReveal({ attempts: this.attempts, cause, rounds });
     this.options.onFinished();
   }
 

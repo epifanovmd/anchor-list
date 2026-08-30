@@ -1,3 +1,11 @@
+import {
+  edgesDebug,
+  logEdgesBlocked,
+  logEdgesReached,
+  logEdgesReset,
+  logEdgesState,
+  logEdgesSuppressed,
+} from "../../debug";
 import type { ListStore } from "../../model";
 import { EdgeGate } from "./edge-gate";
 import type { IEdgeCheckContext, ListEdge } from "./edge-geometry";
@@ -59,6 +67,10 @@ export class EdgeThresholds {
     if (allowedEdge === "start") this.startLatch.reset();
     if (allowedEdge === "end") this.endLatch.reset();
 
+    if (allowedEdge !== undefined) {
+      logEdgesReset({ edge: allowedEdge, cause: "жест", distance: undefined });
+    }
+
     return allowedEdge;
   }
 
@@ -70,6 +82,19 @@ export class EdgeThresholds {
   check(context: IEdgeCheckContext, allowedEdge?: ListEdge): void {
     const gateWasOpen = this.gate.isOpen();
     const geometry = getEdgeGeometry(context);
+
+    if (edgesDebug.enabled) {
+      const thresholds = this.thresholds(context.scrollLength);
+
+      logEdgesState({
+        fromStart: geometry.distanceFromStart,
+        fromEnd: geometry.distanceFromEnd,
+        startAt: thresholds.startThreshold,
+        endAt: thresholds.endThreshold,
+        shorter: geometry.isContentShorter,
+        skip: context.skipCallbacks,
+      });
+    }
 
     this.openGateIfOutside(context, geometry);
     this.checkEnd(context, geometry, allowedEdge, gateWasOpen);
@@ -126,7 +151,16 @@ export class EdgeThresholds {
 
     publishEndSignals(this.options.store, geometry, thresholds);
 
-    if (context.skipCallbacks) return;
+    if (context.skipCallbacks) {
+      this.reportSuppressed(
+        "end",
+        geometry.distanceFromEnd,
+        geometry.isContentShorter,
+        thresholds.endThreshold,
+      );
+
+      return;
+    }
 
     this.endLatch.evaluate(
       geometry.distanceFromEnd,
@@ -134,9 +168,24 @@ export class EdgeThresholds {
       thresholds.endThreshold,
       { contentSize: context.contentSize, dataLength: context.dataLength },
       distance => {
-        if (!this.gate.canDispatch("end", allowedEdge, gateWasOpen)) return;
+        if (!this.gate.canDispatch("end", allowedEdge, gateWasOpen)) {
+          logEdgesBlocked({
+            edge: "end",
+            distance,
+            cause: "гейт",
+            allowed: allowedEdge,
+          });
+
+          return;
+        }
 
         this.gate.close();
+        logEdgesReached({
+          edge: "end",
+          distance,
+          threshold: thresholds.endThreshold,
+          allowed: allowedEdge,
+        });
         this.options.onEndReached?.({ distanceFromEnd: distance });
       },
     );
@@ -155,7 +204,16 @@ export class EdgeThresholds {
 
     this.resetStartLatchIfContentGrew(context, startThreshold);
 
-    if (context.skipCallbacks) return;
+    if (context.skipCallbacks) {
+      this.reportSuppressed(
+        "start",
+        geometry.distanceFromStart,
+        false,
+        startThreshold,
+      );
+
+      return;
+    }
 
     this.startLatch.evaluate(
       geometry.distanceFromStart,
@@ -163,12 +221,49 @@ export class EdgeThresholds {
       startThreshold,
       { contentSize: context.contentSize, dataLength: context.dataLength },
       distance => {
-        if (!this.gate.canDispatch("start", allowedEdge, gateWasOpen)) return;
+        if (!this.gate.canDispatch("start", allowedEdge, gateWasOpen)) {
+          logEdgesBlocked({
+            edge: "start",
+            distance,
+            cause: "гейт",
+            allowed: allowedEdge,
+          });
+
+          return;
+        }
 
         this.gate.close();
+        logEdgesReached({
+          edge: "start",
+          distance,
+          threshold: startThreshold,
+          allowed: allowedEdge,
+        });
         this.options.onStartReached?.({ distanceFromStart: distance });
       },
     );
+  }
+
+  /**
+   * Кромка в зоне, но колбэки подавлены своим движением списка.
+   *
+   * Печатается только когда до кромки действительно близко: сообщать о
+   * подавлении там, где до кромки экран, значило бы залить лог на каждом
+   * событии своего переезда.
+   */
+  private reportSuppressed(
+    edge: ListEdge,
+    distance: number,
+    atEdge: boolean,
+    threshold: number,
+  ): void {
+    if (!edgesDebug.enabled) return;
+
+    const within = atEdge || (threshold > 0 && Math.abs(distance) <= threshold);
+
+    if (!within) return;
+
+    logEdgesSuppressed({ edge, distance, cause: "своё движение" });
   }
 
   /**
@@ -195,6 +290,11 @@ export class EdgeThresholds {
       contentGrew
     ) {
       this.startLatch.reset();
+      logEdgesReset({
+        edge: "start",
+        cause: "вырос",
+        distance: context.scroll,
+      });
     }
   }
 }

@@ -152,6 +152,21 @@ export const isOverrunning = (
   scrollLength > 0 &&
   Math.abs(velocity) > scrollLength * OVERRUN_SCREENS_PER_MS;
 
+/**
+ * Запас, применённый на этой скорости, px — для диагностики.
+ *
+ * Повторяет решение {@link computeVisibleRange} целиком, вместе со снятием
+ * запаса на слишком быстром скролле: печатать в лог отдельно посчитанную
+ * величину значило бы объяснять диапазон не тем, из чего он сложился.
+ */
+export const getRangeLookahead = (
+  velocity: number,
+  scrollLength: number,
+): number =>
+  isOverrunning(velocity, scrollLength)
+    ? 0
+    : getLookahead(velocity, scrollLength);
+
 /** Запас по ходу движения, px. Знак повторяет знак скорости. */
 const getLookahead = (velocity: number, scrollLength: number): number => {
   const distance = velocity * LOOKAHEAD_MS;

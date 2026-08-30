@@ -17,6 +17,7 @@ import {
   ActionChip,
   ChipRow,
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   useBottomInset,
@@ -106,6 +107,7 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
           <ActionChip title={"В конец"} onPress={jumpToEnd} />
           <ActionChip title={"Геометрия"} onPress={reportGeometry} />
         </ChipRow>
+        <DebugToggles channels={["scroll", "initial"]} />
       </ControlPanel>
 
       <AnchorList

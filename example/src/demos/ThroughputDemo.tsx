@@ -19,7 +19,13 @@ import {
   useFeedPagination,
 } from "../data";
 import { ChatRow } from "../rows";
-import { Screen, StatusLine, useBottomInset } from "../ui";
+import {
+  ControlPanel,
+  DebugToggles,
+  Screen,
+  StatusLine,
+  useBottomInset,
+} from "../ui";
 
 interface IThroughputDemoProps {
   onBack: () => void;
@@ -59,9 +65,15 @@ export const ThroughputDemo: FC<IThroughputDemoProps> = ({ onBack }) => {
 
   return (
     <Screen title={"Нагрузка"} onBack={onBack}>
-      <StatusLine
-        text={"Замер пишется в консоль раз в секунду, пока экран открыт"}
-      />
+      <ControlPanel>
+        <StatusLine
+          text={"Замер пишется в консоль раз в секунду, пока экран открыт"}
+        />
+        {/* Диагностика и замер спорят за одни и те же кадры: включённая
+            печать растягивает их сильнее, чем то, что замер меряет. Здесь она
+            нужна, только когда числа замера уже показали, куда смотреть. */}
+        <DebugToggles channels={["layout", "scroll"]} />
+      </ControlPanel>
 
       <AnchorList
         data={rows}

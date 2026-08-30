@@ -16,6 +16,15 @@ export interface IContainerBinding {
   index: number;
   type: string;
   stickyEdge: AnchorListStickyEdge | null;
+  /**
+   * Что было в этом контейнере до привязки; undefined — контейнер новый.
+   *
+   * Нужно диагностике: по паре «было — стало» видно, попал ли элемент в
+   * контейнер того же типа. Промах по типу означает перемонтирование
+   * поддерева — самую дорогую смену элемента, и по логу её ни с чем не спутать.
+   */
+  previousKey?: string;
+  previousType?: string;
 }
 
 /** Изменение привязок после `allocate`. */
@@ -45,6 +54,8 @@ export class ContainerPool {
   private free: number[] = [];
   /** Тип последнего элемента контейнера — по нему ищется совпадение при переиспользовании. */
   private lastTypeById = new Map<number, string>();
+  /** Ключ последнего элемента контейнера — печатается диагностикой переработки. */
+  private lastKeyById = new Map<number, string>();
   /** Sticky и обычные контейнеры имеют разную React/Reanimated-структуру. */
   private lastStickyEdgeById = new Map<number, AnchorListStickyEdge | null>();
   private nextId = 0;
@@ -86,7 +97,15 @@ export class ContainerPool {
         binding.index = request.index;
         binding.stickyEdge = request.stickyEdge;
         this.lastStickyEdgeById.set(existingId, request.stickyEdge);
-        changed.push({ ...binding });
+        // Элемент тот же, сменились индекс или роль: содержимое контейнера не
+        // перерабатывается, и «было» здесь равно «стало» — иначе диагностика
+        // считала бы такую привязку переработкой и указывала на давно ушедший
+        // элемент.
+        changed.push({
+          ...binding,
+          previousKey: binding.key,
+          previousType: binding.type,
+        });
         continue;
       }
 
@@ -112,23 +131,35 @@ export class ContainerPool {
   }
 
   private bind(request: IContainerRequest): IContainerBinding {
-    const id = this.take(request.type, request.stickyEdge);
+    const { id, previousType } = this.take(request.type, request.stickyEdge);
     const binding: IContainerBinding = {
       id,
       key: request.key,
       index: request.index,
       type: request.type,
       stickyEdge: request.stickyEdge,
+      previousKey: this.lastKeyById.get(id),
+      previousType,
     };
 
     this.bindings.set(id, binding);
     this.containerByKey.set(request.key, id);
+    this.lastKeyById.set(id, request.key);
 
     return { ...binding };
   }
 
-  /** Свободный контейнер того же типа, иначе любой свободный, иначе новый. */
-  private take(type: string, stickyEdge: AnchorListStickyEdge | null): number {
+  /**
+   * Свободный контейнер того же типа, иначе любой свободный, иначе новый.
+   *
+   * Возвращает вместе с номером тип, который в контейнере был: узнать его после
+   * выбора уже нельзя — выбор его и перезаписывает, — а диагностике переработки
+   * нужна именно пара «было — стало».
+   */
+  private take(
+    type: string,
+    stickyEdge: AnchorListStickyEdge | null,
+  ): { id: number; previousType: string | undefined } {
     for (let i = this.free.length - 1; i >= 0; i--) {
       const id = this.free[i]!;
 
@@ -138,7 +169,7 @@ export class ContainerPool {
       ) {
         this.free.splice(i, 1);
 
-        return id;
+        return { id, previousType: type };
       }
     }
 
@@ -158,9 +189,11 @@ export class ContainerPool {
         : this.free.splice(compatibleIndex, 1)[0];
 
     if (anyFree !== undefined) {
+      const previousType = this.lastTypeById.get(anyFree);
+
       this.lastTypeById.set(anyFree, type);
 
-      return anyFree;
+      return { id: anyFree, previousType };
     }
 
     const id = this.nextId++;
@@ -168,7 +201,7 @@ export class ContainerPool {
     this.lastTypeById.set(id, type);
     this.lastStickyEdgeById.set(id, stickyEdge);
 
-    return id;
+    return { id, previousType: undefined };
   }
 
   /** Полный сброс — при структурной смене данных, когда ключи не пересекаются. */

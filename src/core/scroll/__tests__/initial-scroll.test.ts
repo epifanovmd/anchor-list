@@ -1,5 +1,21 @@
 import type { AnchorListInitialScroll } from "../../../types";
+import type { IInitialTargetDescription } from "../initial-offset";
 import { InitialScroll } from "../initial-scroll";
+
+/** Диагностика выключена, и содержимое описания цели тестам безразлично. */
+const describeTarget = (): IInitialTargetDescription => ({
+  target: "index",
+  index: 0,
+  position: 0,
+  size: 0,
+  viewOffset: undefined,
+  count: 1,
+  content: 0,
+  measured: true,
+  origin: 0,
+  viewport: 500,
+  revision: 0,
+});
 
 /** Кадры в node не идут сами: сдвигаем их вручную. */
 const flushFrames = (count: number) => {
@@ -22,6 +38,7 @@ const createScroll = (
     scrollToOffset,
     isTargetSettled: overrides.isTargetSettled ?? (() => true),
     getLiveOffset: overrides.getLiveOffset,
+    describeTarget,
     onFinished,
   });
 
@@ -80,6 +97,7 @@ describe("InitialScroll", () => {
       resolveOffset: () => 500,
       scrollToOffset,
       isTargetSettled: () => false,
+      describeTarget,
       onFinished,
     });
 

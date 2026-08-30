@@ -6,8 +6,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { isPinnedAtEdge } from "../core";
-import { anchorListStickyDebug } from "../debug";
-import { stickyDebugFlag } from "../debug/sticky-debug-flag";
+import {
+  formatDebugValues,
+  logStickyPin,
+  STICKY_OVERLAY_EVENT,
+} from "../debug";
+import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
   ListItemKeyProvider,
@@ -68,7 +72,8 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
     const edgeOffset = config.offset;
     const stickySize = config.size ?? geometry?.size ?? 0;
 
-    const debug = stickyDebugFlag();
+    const debug = debugFlag("sticky");
+    const clock = debugClock();
     /** Последняя напечатанная видимость копии в слое. */
     const debugVisible = useSharedValue("");
 
@@ -89,17 +94,23 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
         });
 
       if (debug.value) {
-        const line = visible ? "виден" : "скрыт";
+        const values = formatDebugValues({
+          visible,
+          shift: edge === "start" ? shift : -shift,
+          scroll: scrollOffset.value,
+          position: geometry?.position,
+          limit: geometry?.limit,
+        });
 
-        if (line !== debugVisible.value) {
-          debugVisible.value = line;
-          console.log(
-            `[sticky·overlay] #${index} ${edge} ${line} ` +
-              `экран=${edge === "start" ? shift.toFixed(0) : (-shift).toFixed(0)} ` +
-              `скролл=${scrollOffset.value.toFixed(0)} ` +
-              `позиция=${geometry?.position ?? "—"} ` +
-              `предел=${geometry?.limit === undefined ? "—" : geometry.limit.toFixed(0)}`,
-          );
+        if (values !== debugVisible.value) {
+          debugVisible.value = values;
+          logFromWorklet({
+            clock,
+            channel: "sticky",
+            event: STICKY_OVERLAY_EVENT,
+            key: `#${index}`,
+            values,
+          });
         }
       }
 
@@ -113,13 +124,14 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
     const rendered =
       content !== undefined && geometry !== undefined ? index : -1;
 
-    anchorListStickyDebug.log("pin", config.edge, {
-      активный: index,
-      рисуется: rendered,
-      естьРендер: content !== undefined,
-      позиция: geometry?.position,
-      размер: geometry?.size,
-      предел: geometry?.limit,
+    logStickyPin({
+      edge: config.edge,
+      active: index,
+      rendered,
+      hasRenderer: content !== undefined,
+      position: geometry?.position,
+      size: geometry?.size,
+      limit: geometry?.limit,
     });
 
     // После коммита, а не во время: копия внутри контента прячется по этому

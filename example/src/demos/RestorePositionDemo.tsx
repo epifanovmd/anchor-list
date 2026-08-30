@@ -25,6 +25,7 @@ import {
   ActionChip,
   ChipRow,
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   ToggleRow,
@@ -169,6 +170,7 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
         <ChipRow>
           <ActionChip title={"Сбросить позицию"} onPress={handleClear} />
         </ChipRow>
+        <DebugToggles channels={["initial", "scroll"]} />
       </ControlPanel>
 
       <AnchorList

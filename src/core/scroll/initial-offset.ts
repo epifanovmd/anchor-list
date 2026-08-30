@@ -20,6 +20,27 @@ const toWholePoints = (offset: number, maxScroll: number): number =>
 import type { AnchorListInitialScroll } from "../../types";
 import { getItemScrollOffset } from "./item-offset";
 
+/**
+ * Из чего сложилась цель на этом кадре.
+ *
+ * Ровно те величины, что печатает канал `initial`: смысл каждой подписан там.
+ * Снимаются здесь, потому что только тут видно, по каким метрикам цель
+ * посчиталась, — по экрану этого не сказать.
+ */
+export interface IInitialTargetDescription {
+  target: string;
+  index: number | undefined;
+  position: number | undefined;
+  size: number | undefined;
+  viewOffset: number | undefined;
+  count: number;
+  content: number;
+  measured: boolean;
+  origin: number;
+  viewport: number;
+  revision: number;
+}
+
 /** Зависимости расчёта стартовой позиции. */
 export interface IInitialOffsetOptions {
   metrics: ListMetrics;
@@ -70,7 +91,7 @@ export class InitialOffsetResolver {
    * Значения снимаются здесь, а не в вызывающем: только тут видно, по каким
    * метрикам цель посчиталась, а по экрану этого не сказать.
    */
-  describe(): Record<string, unknown> {
+  describe(): IInitialTargetDescription {
     const target = this.options.getTarget();
     const index = target?.type === "index" ? target.index : undefined;
 
@@ -85,10 +106,10 @@ export class InitialOffsetResolver {
         index === undefined ? undefined : this.options.metrics.getSize(index),
       viewOffset: target?.type === "index" ? target.viewOffset : undefined,
       count: this.options.metrics.getCount(),
-      contentSize: this.options.getContentSize(),
-      contentMeasured: this.options.isContentMeasured(),
-      contentOrigin: this.options.getContentOrigin(),
-      scrollLength: this.options.getScrollLength(),
+      content: this.options.getContentSize(),
+      measured: this.options.isContentMeasured(),
+      origin: this.options.getContentOrigin(),
+      viewport: this.options.getScrollLength(),
       revision: this.options.getLayoutRevision(),
     };
   }

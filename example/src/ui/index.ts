@@ -2,6 +2,7 @@ export * from "./ActionChip";
 export * from "./Avatar";
 export * from "./ChipRow";
 export * from "./ControlPanel";
+export * from "./DebugToggles";
 export * from "./LiveNumber";
 export * from "./MeterBar";
 export * from "./Screen";

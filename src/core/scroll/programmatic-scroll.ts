@@ -1,3 +1,4 @@
+import { logScrollProgram } from "../../debug";
 import type { ScrollAdapterRef } from "./scroll-adapter";
 
 /** Сколько ждать завершения анимированного программного скролла, мс. */
@@ -87,6 +88,12 @@ export class ProgrammaticScroll {
     this.targetingEnd = false;
     this.endAnimated = false;
     this.active = true;
+    logScrollProgram({
+      target: offset,
+      from: adapter.getOffset?.(),
+      animated,
+      reason: "вызов",
+    });
     adapter.scrollToOffset(offset, animated);
     this.settle(animated);
 
@@ -108,6 +115,12 @@ export class ProgrammaticScroll {
     this.targetingEnd = true;
     this.endAnimated = animated;
     this.active = true;
+    logScrollProgram({
+      target: "конец",
+      from: adapter.getOffset?.(),
+      animated,
+      reason: "вызов",
+    });
     adapter.scrollToEnd(animated);
     this.settle(animated);
 
@@ -129,6 +142,12 @@ export class ProgrammaticScroll {
     }
 
     this.active = true;
+    logScrollProgram({
+      target: "конец",
+      from: adapter.getOffset?.(),
+      animated: this.endAnimated,
+      reason: "доводка конца",
+    });
     adapter.scrollToEnd(this.endAnimated);
     this.settle(this.endAnimated);
 

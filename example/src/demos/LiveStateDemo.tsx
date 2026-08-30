@@ -30,6 +30,7 @@ import {
 import { ChatRow, PinnedAvatar } from "../rows";
 import {
   ControlPanel,
+  DebugToggles,
   LiveNumber,
   MeterBar,
   Screen,
@@ -333,6 +334,7 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
         <StatusLine
           text={`первый кадр: ${readyToRender ? "отрисован" : "нет"}`}
         />
+        <DebugToggles channels={["view", "layout"]} />
       </ControlPanel>
 
       <AnchorList

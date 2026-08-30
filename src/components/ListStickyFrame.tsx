@@ -8,7 +8,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { getStickyOffset, isPinnedAtEdge } from "../core";
-import { stickyDebugFlag } from "../debug/sticky-debug-flag";
+import {
+  formatDebugValues,
+  STICKY_FRAME_EVENT,
+  STICKY_OFFSET_EVENT,
+} from "../debug";
+import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
   useListScrollOffset,
@@ -72,7 +77,8 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
     // Позиция строки приходит из раскладки, смещение скролла — нативное:
     // расходятся они на высоту шапки, и переводит одно в другое эта величина.
     const contentOrigin = useListSignal("contentOrigin") ?? 0;
-    const debug = stickyDebugFlag();
+    const debug = debugFlag("sticky");
+    const clock = debugClock();
     /** Последнее напечатанное состояние: worklet печатает только переходы. */
     const debugState = useSharedValue("");
     const stickyConfigs = useListSticky();
@@ -85,11 +91,21 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
 
     const offset = useDerivedValue(() => {
       if (isContainerParked(position)) {
-        if (debug.value && debugState.value !== "parked") {
-          debugState.value = "parked";
-          console.log(
-            `[sticky·offset] #${itemIndex} уведён за контент position=${position}`,
-          );
+        if (debug.value && debugState.value !== "уведён") {
+          debugState.value = "уведён";
+          logFromWorklet({
+            clock,
+            channel: "sticky",
+            event: STICKY_OFFSET_EVENT,
+            key: `#${itemIndex}`,
+            values: formatDebugValues({
+              state: "уведён",
+              shift: 0,
+              position,
+              edgePos: undefined,
+              limit,
+            }),
+          });
         }
 
         return 0;
@@ -128,16 +144,24 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
             ? edgePosition > limit
             : edgePosition <= limit + stickySize);
 
-        const state = free ? "на месте" : pushed ? "вытолкнут" : "у кромки";
+        const state = free ? "едет" : pushed ? "вытеснен" : "стоит";
+        const values = formatDebugValues({
+          state,
+          shift,
+          position,
+          edgePos: edgePosition,
+          limit,
+        });
 
-        if (state !== debugState.value) {
-          debugState.value = state;
-          console.log(
-            `[sticky·offset] #${itemIndex} ${edge} ${state} ` +
-              `смещение=${shift.toFixed(0)} позиция=${position} размер=${size} ` +
-              `предел=${limit === undefined ? "—" : limit.toFixed(0)} ` +
-              `кромка=${edgePosition.toFixed(0)} отступ=${shiftOfEdge} режим=${mode}`,
-          );
+        if (values !== debugState.value) {
+          debugState.value = values;
+          logFromWorklet({
+            clock,
+            channel: "sticky",
+            event: STICKY_OFFSET_EVENT,
+            key: `#${itemIndex}`,
+            values,
+          });
         }
       }
 
@@ -171,16 +195,24 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
           edge === "start"
             ? pinnedIndices.start.value
             : pinnedIndices.end.value;
-        const line = `${hidden ? "спрятан" : "виден"} слой=${rendered}`;
+        // Экранная координата: по ней видно, есть ли между копиями разрыв.
+        const values = formatDebugValues({
+          hidden,
+          layer: rendered,
+          screen: contentOrigin + position + offset.value - scrollOffset.value,
+          position,
+          limit,
+        });
 
-        if (line !== debugHidden.value) {
-          debugHidden.value = line;
-          // Экранная координата: по ней видно, есть ли между копиями разрыв.
-          console.log(
-            `[sticky·frame] #${itemIndex} ${edge} ${line} ` +
-              `экран=${(contentOrigin + position + offset.value - scrollOffset.value).toFixed(0)} ` +
-              `позиция=${position} предел=${limit === undefined ? "—" : limit.toFixed(0)}`,
-          );
+        if (values !== debugHidden.value) {
+          debugHidden.value = values;
+          logFromWorklet({
+            clock,
+            channel: "sticky",
+            event: STICKY_FRAME_EVENT,
+            key: `#${itemIndex}`,
+            values,
+          });
         }
       }
 

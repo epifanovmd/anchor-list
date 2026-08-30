@@ -20,6 +20,7 @@ import {
 import { ChatRow, JumpToEndButton } from "../rows";
 import {
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   ToggleRow,
@@ -130,6 +131,7 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
           onChange={setStickToEnd}
         />
         <StatusLine text={"Встаньте у нижней строки и откройте клавиатуру"} />
+        <DebugToggles channels={["insets", "scroll"]} />
       </ControlPanel>
 
       <View style={ss.body}>

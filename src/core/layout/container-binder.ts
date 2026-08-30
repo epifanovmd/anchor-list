@@ -1,4 +1,9 @@
-import { anchorListStickyDebug } from "../../debug";
+import {
+  layoutDebug,
+  logLayoutBind,
+  logLayoutRecycle,
+  logStickyBind,
+} from "../../debug";
 import type {
   IAllocationResult,
   IContainerRequest,
@@ -76,7 +81,11 @@ export class ContainerBinder {
       listPerf.count("bindSkipped");
       this.updateClipping(requests, clipTop, clipEnd);
 
-      return { changed: [], released: [], count: pool.getCount() };
+      const cached = { changed: [], released: [], count: pool.getCount() };
+
+      if (layoutDebug.enabled) this.reportBind(requests, cached, 0, true);
+
+      return cached;
     }
 
     const containersBefore = pool.getCount();
@@ -108,6 +117,10 @@ export class ContainerBinder {
     this.previousRequests = requests.map(request => ({ ...request }));
     this.previousRevision = revision ?? -1;
 
+    if (layoutDebug.enabled) {
+      this.reportBind(requests, allocation, released.length, false);
+    }
+
     return allocation;
   }
 
@@ -123,6 +136,53 @@ export class ContainerBinder {
     store.set("numContainers", count);
     this.previousRequests = [];
     this.previousRevision = -1;
+  }
+
+  /**
+   * Что сделала раздача — для диагностики.
+   *
+   * Перепривязки печатаются отдельной строкой на контейнер: по ним видно, попал
+   * ли новый элемент в контейнер того же типа. Промах по типу означает
+   * перемонтирование поддерева — самый дорогой случай смены элемента.
+   */
+  private reportBind(
+    requests: IContainerRequest[],
+    allocation: IAllocationResult,
+    released: number,
+    cached: boolean,
+  ): void {
+    logLayoutBind({
+      requests: requests.length,
+      containers: allocation.count,
+      rebound: allocation.changed.length,
+      released,
+      pinned: requests.filter(request => request.stickyEdge !== null).length,
+      cached,
+    });
+
+    for (const binding of allocation.changed) {
+      // Привязка, не сменившая элемент, переработкой не является: у неё
+      // поменялись индекс или роль, а поддерево осталось на месте. Новый
+      // контейнер — тем более: переиспользовать было нечего, и первая раздача
+      // иначе печатала бы строку на каждый контейнер списка.
+      if (
+        binding.previousKey === undefined ||
+        binding.previousKey === binding.key
+      ) {
+        continue;
+      }
+
+      logLayoutRecycle({
+        container: binding.id,
+        from: binding.previousKey,
+        to: binding.key,
+        type: binding.type,
+        sameType:
+          binding.previousType === undefined
+            ? undefined
+            : binding.previousType === binding.type,
+      });
+    }
   }
 
   /** Сигналы одного контейнера. */
@@ -172,13 +232,14 @@ export class ContainerBinder {
     store.set(`containerStickyLimit${id}`, stickyLimit);
 
     if (request.stickyEdge) {
-      anchorListStickyDebug.log("bind", `#${request.index}`, {
-        контейнер: id,
-        кромка: request.stickyEdge,
-        позиция: placement.position,
-        размер: placement.size,
-        предел: stickyLimit,
-        подрезан: placement.clipped,
+      logStickyBind({
+        index: request.index,
+        container: id,
+        edge: request.stickyEdge,
+        position: placement.position,
+        size: placement.size,
+        limit: stickyLimit,
+        clipped: placement.clipped,
       });
     }
     if (previousPosition !== placement.position) {

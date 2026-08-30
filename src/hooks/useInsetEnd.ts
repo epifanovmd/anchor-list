@@ -7,6 +7,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { INSET_END_EPSILON, resolveInsetEnd } from "../core";
+import {
+  formatDebugValues,
+  INSETS_FRAME_EVENT,
+  INSETS_SETTLE_EVENT,
+} from "../debug";
+import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 
 /** Что нужно знать про низ списка, чтобы разложить его на UI-потоке. */
 export interface IInsetEndOptions {
@@ -86,6 +92,8 @@ export const useInsetEnd = ({
   /** Смещение, на котором список настаивает, и признак «нативный не подтвердил». */
   const desiredScroll = useSharedValue(0);
   const pending = useSharedValue(false);
+  const debug = debugFlag("insets");
+  const clock = debugClock();
 
   useAnimatedReaction(
     () => ({
@@ -132,6 +140,24 @@ export const useInsetEnd = ({
       alignOffset.value = layout.alignOffset;
       spacer.value = layout.spacer;
 
+      if (debug.value) {
+        logFromWorklet({
+          clock,
+          channel: "insets",
+          event: INSETS_FRAME_EVENT,
+          key: "",
+          values: formatDebugValues({
+            inset,
+            delta: inset - previousInset,
+            spacer: layout.spacer,
+            align: layout.alignOffset,
+            from,
+            to: layout.scroll,
+            owned,
+          }),
+        });
+      }
+
       // Отступ не менялся — смещение не наше дело. Кадр приходит и от роста
       // элементов: тронуть скролл на нём значило бы уводить список от каждого
       // нового сообщения и от каждого замера строки.
@@ -171,15 +197,29 @@ export const useInsetEnd = ({
         return;
       }
 
+      const room = contentSize.value - scrollLength.value;
+      const applied = room >= desiredScroll.value - INSET_END_EPSILON;
+
+      if (debug.value) {
+        logFromWorklet({
+          clock,
+          channel: "insets",
+          event: INSETS_SETTLE_EVENT,
+          key: "",
+          values: formatDebugValues({
+            desired: desiredScroll.value,
+            live: scrollOffset.value,
+            content: contentSize.value,
+            room,
+            applied,
+          }),
+        });
+      }
+
       // Место ещё не появилось: замер меньше, чем нужно под запрошенное
       // смещение. Повторять сейчас незачем — нативный слой обрежет так же, как
       // обрезал в тот раз, и это лишний вызов на каждый кадр клавиатуры.
-      if (
-        contentSize.value - scrollLength.value <
-        desiredScroll.value - INSET_END_EPSILON
-      ) {
-        return;
-      }
+      if (!applied) return;
 
       scrollTo(scrollRef, 0, desiredScroll.value, false);
     },

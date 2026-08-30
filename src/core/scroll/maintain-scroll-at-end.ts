@@ -1,3 +1,4 @@
+import { logScrollAtEnd } from "../../debug";
 import type { ListStore } from "../../model";
 import type { ScrollAdapterRef } from "./scroll-adapter";
 
@@ -99,6 +100,13 @@ export class MaintainScrollAtEnd {
 
     if (this.phase !== "idle") {
       this.queued = true;
+      logScrollAtEnd({
+        phase: "запрошено",
+        wasAtEnd: atEnd,
+        offset: this.offsetAtRequest,
+        drift: undefined,
+        queued: true,
+      });
 
       return true;
     }
@@ -106,6 +114,14 @@ export class MaintainScrollAtEnd {
     this.queued = false;
     this.phase = "pending";
     this.offsetAtRequest = this.options.adapter()?.getOffset?.() ?? 0;
+
+    logScrollAtEnd({
+      phase: "запрошено",
+      wasAtEnd: atEnd,
+      offset: this.offsetAtRequest,
+      drift: undefined,
+      queued: false,
+    });
 
     this.scheduledFrame = requestAnimationFrame(() => {
       this.scheduledFrame = undefined;
@@ -124,6 +140,13 @@ export class MaintainScrollAtEnd {
     // уже погашен самой добавленной строкой, и по нему «пользователь ушёл» и
     // «внизу добавилось» неразличимы. Смещение же меняет только пользователь.
     if (Math.abs(offset - this.offsetAtRequest) > USER_MOVE_EPSILON) {
+      logScrollAtEnd({
+        phase: "отменено",
+        wasAtEnd: true,
+        offset,
+        drift: offset - this.offsetAtRequest,
+        queued: this.queued,
+      });
       this.phase = "idle";
       this.queued = false;
 
@@ -131,6 +154,13 @@ export class MaintainScrollAtEnd {
     }
 
     this.phase = "active";
+    logScrollAtEnd({
+      phase: "выполнено",
+      wasAtEnd: true,
+      offset,
+      drift: offset - this.offsetAtRequest,
+      queued: this.queued,
+    });
     adapter()?.scrollToEnd(animated);
 
     const settle = () => {

@@ -2,7 +2,7 @@ import type {
   IAnchorListRenderItemProps,
   IAnchorListStickyConfig,
 } from "@epifanovmd/anchor-list";
-import { AnchorList, setStickyDebug } from "@epifanovmd/anchor-list";
+import { AnchorList } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet } from "react-native";
@@ -20,6 +20,7 @@ import {
 import { ChatRow, PinnedAvatar } from "../rows";
 import {
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   ToggleRow,
@@ -43,7 +44,6 @@ interface IPinnedAnchorsDemoProps {
 export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
   const bottomInset = useBottomInset();
 
-  const [debug, setDebug] = useState(false);
   const [stickyDays, setStickyDays] = useState(true);
   const [stickyAvatars, setStickyAvatars] = useState(true);
 
@@ -83,11 +83,6 @@ export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
     return configs;
   }, [stickyDays, stickyAvatars, dayIndices, avatarIndices, groupStarts]);
 
-  const handleDebugChange = useCallback((value: boolean) => {
-    setDebug(value);
-    setStickyDebug(value);
-  }, []);
-
   const renderItem = useCallback(
     ({
       item,
@@ -117,14 +112,10 @@ export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
           value={stickyAvatars}
           onChange={setStickyAvatars}
         />
-        <ToggleRow
-          title={"Диагностика прилипания в консоль"}
-          value={debug}
-          onChange={handleDebugChange}
-        />
         <StatusLine
           text={`дат: ${dayIndices.length} · групп: ${avatarIndices.length}`}
         />
+        <DebugToggles channels={["sticky", "layout"]} />
       </ControlPanel>
 
       {/* Высоты намеренно измеряются. Увеличенный буфер даёт строкам уточнить

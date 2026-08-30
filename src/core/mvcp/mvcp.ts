@@ -1,4 +1,11 @@
-import { anchorListScrollDebug } from "../../debug/scroll-debug";
+import {
+  logMvcpCapture,
+  logMvcpMiss,
+  logMvcpNoAnchor,
+  logMvcpShift,
+  mvcpDebug,
+  signed,
+} from "../../debug";
 import type { ListMetrics, ListStore } from "../../model";
 import { listPerf } from "../../perf";
 import type { ScrollAdapterRef } from "../scroll";
@@ -110,6 +117,18 @@ export class MaintainVisibleContentPosition {
     });
 
     this.anchors = anchors;
+
+    if (mvcpDebug.enabled) {
+      const anchor = anchors[0];
+
+      logMvcpCapture({
+        reason: _reason,
+        anchor: anchor?.index,
+        position: anchor?.position,
+        offset: anchor === undefined ? undefined : anchor.position - scroll,
+        candidates: anchors.length,
+      });
+    }
   }
 
   /**
@@ -148,7 +167,11 @@ export class MaintainVisibleContentPosition {
 
     if (captured.length === 0) {
       listPerf.count("mvcpNoAnchor");
-      anchorListScrollDebug.log("mvcp", { reason: _reason, anchor: "нет" });
+      logMvcpNoAnchor({
+        reason: _reason,
+        cause: "не снят",
+        candidates: 0,
+      });
 
       return scroll;
     }
@@ -158,9 +181,9 @@ export class MaintainVisibleContentPosition {
     if (!resolved) {
       listPerf.count("mvcpNoAnchor");
       this.residual = 0;
-      anchorListScrollDebug.log("mvcp", {
+      logMvcpNoAnchor({
         reason: _reason,
-        anchor: "не пережил",
+        cause: "не пережил",
         candidates: captured.length,
       });
 
@@ -246,13 +269,14 @@ export class MaintainVisibleContentPosition {
     applied: number,
     lost: number,
   ): void {
-    anchorListScrollDebug.log("mvcp", {
-      reason,
+    logMvcpShift({
       anchor: anchor.index,
+      reason,
       candidate,
-      moved,
-      applied,
+      moved: signed(moved),
+      applied: signed(applied),
       lost,
+      residual: this.residual,
     });
   }
 
@@ -270,7 +294,7 @@ export class MaintainVisibleContentPosition {
     scroll: number,
     next: number,
   ): void {
-    if (!listPerf.enabled && !anchorListScrollDebug.enabled) return;
+    if (!listPerf.enabled && !mvcpDebug.enabled) return;
 
     const before = anchor.position - scroll;
     const after = position - next;
@@ -283,7 +307,7 @@ export class MaintainVisibleContentPosition {
     // Расстояние опорной строки до верхней кромки до изменения и после. Оно и
     // есть то, что видно глазом: разошлось — строка уехала под пальцем.
     if (error >= 1) {
-      anchorListScrollDebug.log("miss", {
+      logMvcpMiss({
         anchor: anchor.index,
         before,
         after,

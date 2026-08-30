@@ -1,3 +1,4 @@
+import { logViewChanged, logViewDrop, logViewHold } from "../../debug";
 import type { ListMetrics } from "../../model";
 import type {
   IAnchorListViewabilityPair,
@@ -96,6 +97,7 @@ export class ViewabilityTracker<TItem> {
 
       clearTimeout(timer);
       state.timers.delete(key);
+      logViewDrop({ key, pair: this.pairs.indexOf(pair) });
     }
 
     if (!minimumViewTime) {
@@ -106,6 +108,12 @@ export class ViewabilityTracker<TItem> {
 
     for (const key of entered) {
       if (state.timers.has(key)) continue;
+
+      logViewHold({
+        key,
+        pair: this.pairs.indexOf(pair),
+        waitMs: minimumViewTime,
+      });
 
       const timer = setTimeout(() => {
         state.timers.delete(key);
@@ -158,6 +166,13 @@ export class ViewabilityTracker<TItem> {
     ].filter(
       (token): token is IAnchorListViewToken<TItem> => token !== undefined,
     );
+
+    logViewChanged({
+      pair: this.pairs.indexOf(pair),
+      entered,
+      exited,
+      viewable: state.viewableKeys.size,
+    });
 
     const viewableItems = [...state.viewableKeys]
       .map(key => this.createToken(key, true))

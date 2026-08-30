@@ -15,6 +15,7 @@ import {
 import { ChatRow } from "../rows";
 import {
   ControlPanel,
+  DebugToggles,
   Screen,
   StatusLine,
   ToggleRow,
@@ -113,6 +114,7 @@ export const EndlessFeedDemo: FC<IEndlessFeedDemoProps> = ({ onBack }) => {
         <StatusLine
           text={"Долистайте вверх: с выключенным удержанием контент прыгнет"}
         />
+        <DebugToggles channels={["edges", "mvcp"]} />
       </ControlPanel>
 
       <AnchorList

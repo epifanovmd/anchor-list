@@ -16,6 +16,10 @@
  */
 const COMPENSATION_SCREENS_PER_MS = 0.03;
 
+/** Порог скорости в px/мс — та же величина, что и в проверке, для диагностики. */
+export const getCompensationSpeedLimit = (scrollLength: number): number =>
+  scrollLength * COMPENSATION_SCREENS_PER_MS;
+
 /**
  * Список идёт слишком быстро, чтобы удержание позиции имело смысл.
  *

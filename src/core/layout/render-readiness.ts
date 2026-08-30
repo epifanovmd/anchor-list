@@ -25,8 +25,13 @@ export interface IRenderReadinessOptions {
   getLayoutRevision: () => number;
   /** Начальный скролл ещё не завершён. */
   isPending: () => boolean;
-  /** Показать список. */
-  finish: () => void;
+  /**
+   * Показать список.
+   *
+   * @param cause чем вызван показ: измерениями видимых строк или страховкой.
+   * @param rounds сколько кругов прождала страховка — печатается диагностикой.
+   */
+  finish: (cause: string, rounds: number) => void;
 }
 
 /**
@@ -68,7 +73,7 @@ export class RenderReadiness {
     if (!isPending() || hasInitialTarget()) return;
     if (getCount() !== 0 && !this.isVisibleRangeMeasured()) return;
 
-    finish();
+    finish("замеры", this.fallbackRounds);
   }
 
   /** Завести страховку на случай, когда измерений не будет вовсе. */
@@ -97,7 +102,7 @@ export class RenderReadiness {
         return;
       }
 
-      this.options.finish();
+      this.options.finish("страховка", this.fallbackRounds);
     }, READY_FALLBACK_MS);
   }
 

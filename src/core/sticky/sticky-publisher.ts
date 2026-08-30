@@ -1,4 +1,4 @@
-import { anchorListStickyDebug } from "../../debug";
+import { logStickyActive } from "../../debug";
 import type { ListStore } from "../../model";
 import type { StickyAnchors } from "./sticky-anchors";
 
@@ -48,11 +48,12 @@ export class StickyPublisher {
 
       store.set(signal, state.activeIndex);
 
-      anchorListStickyDebug.log("active", state.edge, {
-        индекс: state.activeIndex,
-        предел: state.limit,
-        скролл: Math.round(scroll),
-        вьюпорт: Math.round(scrollLength),
+      logStickyActive({
+        edge: state.edge,
+        index: state.activeIndex,
+        limit: state.limit,
+        scroll: Math.round(scroll),
+        viewport: Math.round(scrollLength),
       });
     }
 

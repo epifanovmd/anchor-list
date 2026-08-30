@@ -1,5 +1,19 @@
-import { anchorListInitialScrollDebug } from "../../debug/initial-scroll-debug";
-import { anchorListScrollDebug } from "../../debug/scroll-debug";
+import {
+  initialDebug,
+  layoutDebug,
+  logInitialMeasure,
+  logLayoutBlank,
+  logLayoutContent,
+  logLayoutMeasure,
+  logLayoutRange,
+  logMvcpSkip,
+  logScrollEvent,
+  logScrollJump,
+  logScrollRest,
+  logScrollStale,
+  scrollDebug,
+  signed,
+} from "../../debug";
 import type { IAnchorListStickyGeometry, IContainerRequest } from "../../model";
 import { ContainerPool, ListMetrics, ListStore } from "../../model";
 import { listPerf, perfNow } from "../../perf";
@@ -14,11 +28,13 @@ import {
   ContainerBinder,
   ContentSize,
   EMPTY_RANGE,
+  getRangeLookahead,
   isOverrunning,
   LayoutScheduler,
   RenderReadiness,
 } from "../layout";
 import {
+  getCompensationSpeedLimit,
   isPastCompensationSpeed,
   MaintainVisibleContentPosition,
 } from "../mvcp";
@@ -39,6 +55,24 @@ import type { IAnchorListRuntimeProps } from "./runtime-props";
 
 /** Меньшая незакрытая полоса — округление раскладки, а не дыра в кадре. */
 const MIN_BLANK_PX = 1;
+
+/**
+ * Во сколько раз дельта события должна разойтись с прошлой, чтобы считаться
+ * рывком.
+ *
+ * Сравнение относительное, а не пороговое: на медленном чтении рывком выглядит
+ * и десяток точек, а на броске полсотни — обычный ход. Втрое — это уже не
+ * ускорение пальца, а разрыв в потоке событий.
+ */
+const JUMP_RATIO = 3;
+
+/**
+ * Добавка к сравнению рывка, px.
+ *
+ * Без неё дельта в пару точек после дельты в полточки считалась бы рывком: у
+ * стоящего списка отношение соседних дельт бессмысленно.
+ */
+const JUMP_MIN_PX = 8;
 
 /**
  * Через сколько тишины скролл считается остановившимся, мс.
@@ -146,6 +180,8 @@ export class ListRuntime<TItem> {
    * направление переворачивалось бы через событие. См. {@link resolveFreshOffset}.
    */
   private lastEventOffset: number | undefined;
+  /** Дельта прошлого события: с ней сравнивается следующая при поиске рывка. */
+  private lastEventDelta: number | undefined;
   /** Меняется только когда данные или геометрия требуют полной публикации. */
   private layoutRevision = 0;
   private requestRevision = 0;
@@ -255,7 +291,7 @@ export class ListRuntime<TItem> {
       hasInitialTarget: () => this.props.initialScroll !== undefined,
       getLayoutRevision: () => this.layoutRevision,
       isPending: () => this.initialScroll.isActive(),
-      finish: () => this.initialScroll.finish(),
+      finish: (cause, rounds) => this.initialScroll.finish(cause, rounds),
     });
 
     this.items.apply(props.data, props);
@@ -353,6 +389,21 @@ export class ListRuntime<TItem> {
   setContentSize(height: number): void {
     this.contentSize.setMeasured(height);
     this.publishGeometry();
+
+    if (layoutDebug.enabled) {
+      const own = this.contentSize.get();
+
+      logLayoutContent({
+        own,
+        native: height,
+        diff: signed(height - own),
+        items: this.metrics.getTotalSize(),
+        header: this.store.peek("headerSize"),
+        footer: this.store.peek("footerSize"),
+        spacer: this.store.peek("anchoredEndSpaceSize"),
+      });
+    }
+
     // Стартовая позиция «в конец» ждала именно этого замера: без него конец
     // контента — это конец элементов, без подвала и распорок.
     this.initialScroll.apply();
@@ -519,7 +570,11 @@ export class ListRuntime<TItem> {
     // Событие отправлено до применения компенсации: его смещение уже устарело,
     // и принять его — значит откатить только что сделанный сдвиг. Проверяется
     // до подмены смещения: речь именно об этом событии.
-    if (this.mvcp.isStaleScroll(offset - this.getContentOrigin())) return;
+    if (this.mvcp.isStaleScroll(offset - this.getContentOrigin())) {
+      logScrollStale({ offset, current: this.getScroll() });
+
+      return;
+    }
 
     const previousEvent = this.lastEventOffset;
 
@@ -578,22 +633,8 @@ export class ListRuntime<TItem> {
 
     // На скрабе слияние вредит: проход стоит доли миллисекунды, а каждый
     // пропущенный оставляет на экране картинку, отставшую на несколько экранов.
-    if (anchorListScrollDebug.enabled) {
-      const native = this.adapter?.getOffset?.();
-
-      // Ход самого смещения: на ровной прокрутке дельты соседних событий
-      // близки, а рывок — это дельта, выпавшая из ряда. `native` и `lag`
-      // показывают, дошёл ли сдвиг до нативного слоя или тот ушёл своей
-      // дорогой.
-      anchorListScrollDebug.log("event", {
-        offset,
-        delta: offset - (previousEvent ?? offset),
-        scroll,
-        adjust: this.store.peek("scrollAdjust"),
-        native,
-        lag: native === undefined ? undefined : Math.abs(native - offset),
-        own: ownMove,
-      });
+    if (scrollDebug.enabled) {
+      this.reportScrollEvent(offset, previousEvent, ownMove);
     }
 
     const overrunning = isOverrunning(this.velocity.get(), this.scrollLength);
@@ -642,6 +683,7 @@ export class ListRuntime<TItem> {
       this.idleTimer = undefined;
       // История сбрасывается вместе со значением: следующее движение начнётся
       // с чистого листа, а не продолжит средневзвешенное через паузу.
+      logScrollRest({ offset: this.scroll, velocity: this.velocity.get() });
       this.velocity.reset();
       this.scrollDirection = 0;
       this.store.set("velocity", 0);
@@ -811,31 +853,40 @@ export class ListRuntime<TItem> {
       }
     }
 
-    if (anchorListScrollDebug.enabled) {
+    if (layoutDebug.enabled) {
       const index = this.metrics.getIndexByKey(key);
-      const before = index === undefined ? 0 : this.metrics.getSize(index);
-      const velocity = this.velocity.get();
+      const before =
+        index === undefined ? undefined : this.metrics.getSize(index);
 
-      // Замер на ходу — исходная причина сдвига: строка разошлась с оценкой, и
-      // на эту разницу уедет всё, что под ней.
-      if (velocity !== 0 || index === undefined || before !== size) {
-        anchorListScrollDebug.log("resize", {
-          index,
+      // Замер, совпавший с оценкой, ничего не двигает: печатать нечего.
+      if (before !== size) {
+        logLayoutMeasure({
+          index: index ?? key,
           from: before,
           to: size,
-          delta: index === undefined ? 0 : size - before,
-          velocity,
-          // Компенсация пропущена по скорости: сдвиг пойдёт как есть.
-          skipped: tooFast,
+          delta: before === undefined ? undefined : signed(size - before),
+          velocity: this.velocity.get(),
+          compensated:
+            this.props.maintainVisibleContentPositionSize && !tooFast,
         });
       }
     }
 
-    if (anchorListInitialScrollDebug.enabled) {
+    if (tooFast) {
+      logMvcpSkip({
+        velocity: this.velocity.get(),
+        limit: getCompensationSpeedLimit(this.scrollLength),
+        key,
+      });
+    }
+
+    // Печатается и после показа: замер, пришедший туда, — это и есть перекладка
+    // на глазах у пользователя, ради которой канал чаще всего и включают.
+    if (initialDebug.enabled) {
       const index = this.metrics.getIndexByKey(key);
 
-      anchorListInitialScrollDebug.log("resize", {
-        index,
+      logInitialMeasure({
+        index: index ?? key,
         from: index === undefined ? undefined : this.metrics.getSize(index),
         to: size,
         // Замер после показа списка — это и есть перекладка на глазах.
@@ -882,11 +933,14 @@ export class ListRuntime<TItem> {
       velocity: this.velocity.get(),
     });
 
-    if (listPerf.enabled) this.reportBlankSpace("before");
+    if (layoutDebug.enabled) this.reportRange();
+
+    if (listPerf.enabled || layoutDebug.enabled)
+      this.reportBlankSpace("before");
 
     this.bindContainers();
 
-    if (listPerf.enabled) this.reportBlankSpace("after");
+    if (listPerf.enabled || layoutDebug.enabled) this.reportBlankSpace("after");
     this.store.set("totalSize", this.metrics.getTotalSize());
     this.publishVisibleRange();
     this.publishGeometry();
@@ -1218,6 +1272,72 @@ export class ListRuntime<TItem> {
     return this.props.shouldRestorePosition?.(index) ?? true;
   }
 
+  /**
+   * Ход смещения по событиям — для диагностики.
+   *
+   * Величины снимаются здесь, а не в канале: живое нативное смещение стоит
+   * вызова в нативный слой, и при выключенной диагностике его быть не должно.
+   *
+   * Рывок ищется сравнением с прошлой дельтой, а не с порогом в пикселях: на
+   * медленном чтении рывком будет и десяток точек, а на броске полсотни —
+   * норма. Выпавшей из ряда считается дельта, втрое разошедшаяся с предыдущей.
+   */
+  private reportScrollEvent(
+    offset: number,
+    previousEvent: number | undefined,
+    ownMove: boolean,
+  ): void {
+    const native = this.adapter?.getOffset?.();
+    const delta = offset - (previousEvent ?? offset);
+    const velocity = this.velocity.get();
+    const usual = this.lastEventDelta;
+
+    logScrollEvent({
+      offset,
+      delta: signed(delta),
+      velocity,
+      native,
+      lag: native === undefined ? undefined : Math.abs(native - offset),
+      own: ownMove,
+    });
+
+    // Нулевая прошлая дельта — список стоял, и первое движение из покоя рывком
+    // не является: сравнивать его не с чем.
+    const jumped =
+      usual !== undefined &&
+      usual !== 0 &&
+      Math.abs(delta) > Math.abs(usual) * JUMP_RATIO + JUMP_MIN_PX;
+
+    if (jumped) {
+      logScrollJump({
+        offset,
+        delta: signed(delta),
+        usual: signed(usual),
+        velocity,
+        own: ownMove,
+      });
+    }
+
+    this.lastEventDelta = delta;
+  }
+
+  /**
+   * Диапазон отрисовки — для диагностики.
+   *
+   * Печатается после расчёта: смонтировано ровно то, что попало в
+   * буферизованные границы, и по ним видно, была ли строка отрисована вообще.
+   */
+  private reportRange(): void {
+    logLayoutRange({
+      visible: `${this.range.start}..${this.range.end}`,
+      buffered: `${this.range.startBuffered}..${this.range.endBuffered}`,
+      scroll: this.scroll,
+      velocity: this.velocity.get(),
+      lookahead: getRangeLookahead(this.velocity.get(), this.scrollLength),
+      count: this.range.endBuffered - this.range.startBuffered + 1,
+    });
+  }
+
   /** Замер одного прохода раскладки. */
   private reportLayoutPass(startedAt: number): void {
     listPerf.count("rangeCalc");
@@ -1242,11 +1362,21 @@ export class ListRuntime<TItem> {
     // посчитанная по нему, была бы выдумкой.
     if (this.restoring) return;
 
+    // Скрытый список пуст по построению: до первого показа в кадре нет ничего,
+    // и считать это незакрытым вьюпортом значит объявлять дырой каждое
+    // открытие — и в логе, и в счётчиках замера.
+    if (this.store.peek("readyToRender") !== true) return;
+
     const blank = this.measureBlankSpace();
 
     if (blank <= MIN_BLANK_PX) return;
 
-    anchorListScrollDebug.log("blank", { stage, px: blank });
+    logLayoutBlank({
+      stage: stage === "before" ? "до" : "после",
+      px: blank,
+      scroll: this.getScroll(),
+      buffered: `${this.range.startBuffered}..${this.range.endBuffered}`,
+    });
 
     if (stage === "before") {
       listPerf.count("blankFrames");
