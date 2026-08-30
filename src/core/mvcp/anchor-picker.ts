@@ -23,6 +23,21 @@ export interface IAnchorPick {
   /** Первый элемент, начинающийся не выше кромки вьюпорта. */
   firstIndex: number;
   viewportEnd: number;
+  /**
+   * Сколько строк во вьюпорте пропущено как неизмеренные.
+   *
+   * Нужно диагностике: пропущенная строка остаётся выше опоры, и её замер
+   * компенсируется как изменение над вьюпортом — то есть уводит её же с экрана.
+   * По одному индексу якоря этого не видно.
+   */
+  skippedUnmeasured: number;
+  /**
+   * Опорой стала строка, торчащая над кромкой: полных во вьюпорте не нашлось.
+   *
+   * Такая опора держит свой верх, который пользователю не виден, — а видимое
+   * содержимое при этом едет.
+   */
+  usedPartial: boolean;
 }
 
 /**
@@ -60,11 +75,20 @@ export const pickAnchors = ({
   const viewportEnd = scroll + scrollLength;
   const firstIndex = count === 0 ? 0 : metrics.findIndexAtOffset(scroll);
 
-  if (count === 0) return { anchors: [], firstIndex, viewportEnd };
+  if (count === 0) {
+    return {
+      anchors: [],
+      firstIndex,
+      viewportEnd,
+      skippedUnmeasured: 0,
+      usedPartial: false,
+    };
+  }
 
   const anchors: IAnchor[] = [];
   /** Строки, чей верх выше кромки вьюпорта — запасной вариант. */
   const partial: IAnchor[] = [];
+  let skippedUnmeasured = 0;
 
   for (let index = firstIndex; index < count; index++) {
     const key = metrics.getKey(index);
@@ -80,7 +104,10 @@ export const pickAnchors = ({
     if (position > viewportEnd) break;
 
     // У неизмеренного элемента позиция оценочная: доводить по ней нечего.
-    if (!metrics.hasMeasured(key)) continue;
+    if (!metrics.hasMeasured(key)) {
+      skippedUnmeasured++;
+      continue;
+    }
     if (shouldRestorePosition && !shouldRestorePosition(index)) continue;
 
     if (position < scroll) {
@@ -97,6 +124,8 @@ export const pickAnchors = ({
     anchors: anchors.length === 0 ? partial : anchors,
     firstIndex,
     viewportEnd,
+    skippedUnmeasured,
+    usedPartial: anchors.length === 0 && partial.length > 0,
   };
 };
 

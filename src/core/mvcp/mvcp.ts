@@ -109,24 +109,27 @@ export class MaintainVisibleContentPosition {
 
     if (metrics.getCount() === 0) return;
 
-    const { anchors } = pickAnchors({
+    const pick = pickAnchors({
       metrics,
       scroll,
       scrollLength: getScrollLength(),
       shouldRestorePosition,
     });
 
-    this.anchors = anchors;
+    this.anchors = pick.anchors;
 
     if (mvcpDebug.enabled) {
-      const anchor = anchors[0];
+      const anchor = pick.anchors[0];
 
       logMvcpCapture({
         reason: _reason,
         anchor: anchor?.index,
         position: anchor?.position,
         offset: anchor === undefined ? undefined : anchor.position - scroll,
-        candidates: anchors.length,
+        first: pick.firstIndex,
+        skipped: pick.skippedUnmeasured,
+        partial: pick.usedPartial,
+        candidates: pick.anchors.length,
       });
     }
   }

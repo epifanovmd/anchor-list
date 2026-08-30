@@ -303,7 +303,13 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
           <ActionChip title={"−1 видимую"} onPress={removeVisible} />
           <ActionChip title={"растянуть видимую"} onPress={growVisible} />
         </ChipRow>
-        <DebugToggles channels={["mvcp", "layout"]} />
+        {/* Компенсация и стартовая позиция включены с открытия: обе решают
+            первыми кадрами, и тумблером их не застать. Раскладка — по
+            требованию: на прокрутке её поток заглушает обе. */}
+        <DebugToggles
+          channels={["mvcp", "initial", "layout", "scroll"]}
+          defaultEnabled={["mvcp", "initial"]}
+        />
       </ControlPanel>
 
       <AnchorList
