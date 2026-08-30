@@ -35,7 +35,7 @@ export const DEMOS: IDemoEntry[] = [
     id: "restore-position",
     title: "Стартовая позиция",
     description:
-      "Позиция запоминается при уходе с экрана и восстанавливается к первому кадру",
+      "Первое открытие — на заданной строке; дальше позиция запоминается при уходе и восстанавливается к первому кадру",
     covers: ["initialScroll", "getVisibleRange", "getPositionAtIndex"],
     screen: RestorePositionDemo,
   },

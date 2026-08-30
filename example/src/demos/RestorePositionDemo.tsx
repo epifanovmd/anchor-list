@@ -35,6 +35,16 @@ import {
 const SCREEN_ID = "restore-position";
 const MESSAGE_COUNT = 300;
 
+/**
+ * Стартовая позиция для первого открытия — когда восстанавливать ещё нечего.
+ *
+ * Зачем середина, а не конец: стенд про то, что список открывается **ровно** на
+ * заданной строке, а конец списка он взял бы и без стартовой позиции —
+ * промахнуться там негде. Строка в глубине требует посчитать цель по метрикам и
+ * довести её, и промах на ней виден сразу.
+ */
+const DEFAULT_START_INDEX = Math.floor(MESSAGE_COUNT / 2);
+
 interface IRestorePositionDemoProps {
   onBack: () => void;
 }
@@ -45,6 +55,10 @@ interface IRestorePositionDemoProps {
  * Позиция читается один раз — до первого рендера, — поэтому список открывается
  * сразу там, где его оставили, без видимого прыжка. Проверяется уходом на
  * витрину и возвратом на этот экран.
+ *
+ * При первом открытии восстанавливать нечего, и список встаёт на
+ * {@link DEFAULT_START_INDEX}: стартовая позиция здесь задана всегда, иначе
+ * стенд на первом заходе ничем не отличался бы от обычного списка.
  */
 export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
   onBack,
@@ -68,17 +82,27 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
   const [status, setStatus] = useState(() =>
     savedPosition
       ? `восстановлено: ${savedPosition.key}`
-      : "сохранённой позиции нет",
+      : `сохранённой позиции нет — открыто на строке №${DEFAULT_START_INDEX}`,
   );
 
-  const initialScroll = useMemo<AnchorListInitialScroll | undefined>(() => {
-    if (!savedPosition) return undefined;
+  /**
+   * Стартовая позиция задана всегда: сохранённая, если она есть, и умолчание
+   * при первом открытии. Без умолчания стенд открывался бы сверху, как обычный
+   * список, и механику, ради которой он написан, было бы видно только со
+   * второго захода.
+   */
+  const initialScroll = useMemo<AnchorListInitialScroll>(() => {
+    if (savedPosition) {
+      const index = data.findIndex(
+        row => chatRowKey(row) === savedPosition.key,
+      );
 
-    const index = data.findIndex(row => chatRowKey(row) === savedPosition.key);
+      if (index !== -1) {
+        return { type: "index", index, viewOffset: savedPosition.offset };
+      }
+    }
 
-    if (index === -1) return undefined;
-
-    return { type: "index", index, viewOffset: savedPosition.offset };
+    return { type: "index", index: DEFAULT_START_INDEX };
   }, [data, savedPosition]);
 
   /**
@@ -140,12 +164,20 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
   const handleRestoreChange = useCallback((value: boolean) => {
     setRestoreEnabled(value);
     positionStore.setRestoreEnabled(value);
-    setStatus(value ? "восстановление включено" : "восстановление выключено");
+    setStatus(
+      value
+        ? "восстановление включено"
+        : `восстановление выключено — откроется на строке №${DEFAULT_START_INDEX}`,
+    );
   }, []);
 
   const handleClear = useCallback(() => {
     positionStore.clear(SCREEN_ID);
-    setStatus("позиция сброшена");
+    // Снимок тоже сбрасывается: иначе уход с экрана тут же записал бы обратно
+    // ту самую позицию, которую только что стёрли, и следующее открытие
+    // выглядело бы так, будто сброс не сработал.
+    snapshot.current = undefined;
+    setStatus(`позиция сброшена — откроется на строке №${DEFAULT_START_INDEX}`);
   }, []);
 
   const renderItem = useCallback(
@@ -170,7 +202,12 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
         <ChipRow>
           <ActionChip title={"Сбросить позицию"} onPress={handleClear} />
         </ChipRow>
-        <DebugToggles channels={["initial", "scroll"]} />
+        {/* Стартовую позицию тумблером не застать: к моменту, когда до него
+            дотянутся, список давно показан. Канал включён с открытия стенда. */}
+        <DebugToggles
+          channels={["initial", "scroll"]}
+          defaultEnabled={["initial"]}
+        />
       </ControlPanel>
 
       <AnchorList
