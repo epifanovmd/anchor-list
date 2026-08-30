@@ -50,13 +50,13 @@ const CONTENT = 20000;
 /** Домашний индикатор: столько прибавляется к отступу вторым кадром. */
 const HOME_INDICATOR = 34;
 
-const setup = () => {
+const setup = (options: { inset?: number; revealed?: boolean } = {}) => {
   mockReactions.length = 0;
   mockScrollTo.mockClear();
 
-  const insetEnd = sharedValue(0);
+  const insetEnd = sharedValue(options.inset ?? 0);
   const scrollOffset = sharedValue(0);
-  const revealed = sharedValue(false);
+  const revealed = sharedValue(options.revealed ?? false);
 
   // Хук зовётся из дерева: внутри он держит `useMemo`, а тому нужен рендер.
   const Probe = () => {
@@ -113,6 +113,18 @@ describe("useInsetEnd", () => {
   beforeAll(() => {
     (globalThis as IActEnvironment).IS_REACT_ACT_ENVIRONMENT = true;
     silenceRendererNotice();
+  });
+
+  it("не двигает смещение от отступа, который не менялся", () => {
+    // Безопасная зона известна с первого же кадра — так бывает чаще всего.
+    const { frame } = setup({ inset: HOME_INDICATOR, revealed: true });
+
+    // Первый кадр задаёт точку отсчёта, следующий приходит от замера строки:
+    // отступ на нём тот же самый, и двигать список не от чего.
+    frame();
+    frame();
+
+    expect(mockScrollTo).not.toHaveBeenCalled();
   });
 
   it("не двигает смещение, пока список не показан", () => {
