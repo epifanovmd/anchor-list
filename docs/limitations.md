@@ -18,7 +18,9 @@
 
 ## Обязательные условия
 
-**Reanimated 4+ и `react-native-worklets`** — см.
+**Новая архитектура, React Native 0.78+, React 19+.** Reanimated 4 работает
+только на новой архитектуре, а `AnchorList` — только с Reanimated 4+ и
+`react-native-worklets` — см.
 [Установка](installation.md#почему-reanimated-обязателен).
 
 **Стабильные уникальные ключи.** Ключ не зависит от индекса, дубликаты не

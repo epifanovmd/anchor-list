@@ -13,8 +13,9 @@
 yarn add @epifanovmd/anchor-list
 ```
 
-Нужны `react-native-reanimated` 4+ и `react-native-worklets`. Нативного кода в
-пакете нет: линковка не нужна, Expo Go работает. Настройка babel — в
+Нужны новая архитектура, React Native 0.78+, React 19+,
+`react-native-reanimated` 4+ и `react-native-worklets`. Нативного кода в пакете
+нет: линковка не нужна, Expo Go работает. Настройка babel — в
 [руководстве по установке](docs/installation.md).
 
 Список вертикальный и одноколоночный.

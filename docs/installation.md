@@ -14,10 +14,15 @@ npm install @epifanovmd/anchor-list
 
 | Пакет | Версия | Зачем |
 | --- | --- | --- |
-| `react` | любая | — |
-| `react-native` | любая | — |
+| `react` | `>=19.0.0` | Версия, с которой идёт React Native 0.78 |
+| `react-native` | `>=0.78.0` | Минимум для Reanimated 4 |
 | `react-native-reanimated` | `>=4.0.0` | Смещение скролла и прилипание считаются на UI-потоке |
 | `react-native-worklets` | `>=0.5.0` | Runtime worklet-функций; `scheduleOnRN` для перехода в JS |
+
+**Нужна новая архитектура.** Reanimated 4 работает только на ней, поэтому на
+старой архитектуре список не запустится. В RN 0.78 и новее она включена по
+умолчанию; выключенная (`newArchEnabled=false`, `RCT_NEW_ARCH_ENABLED=0`) не
+подходит.
 
 ```sh
 yarn add react-native-reanimated react-native-worklets
@@ -26,6 +31,12 @@ cd ios && pod install
 
 Reanimated 4 требует `react-native-worklets` совместимой версии — таблица
 совместимости есть в документации самого Reanimated.
+
+Проверить, что приложение идёт на новой архитектуре, можно по логам Metro:
+
+```sh
+Running "App" with {"fabric":true,"initialProps":{"concurrentRoot":true},"rootTag":1}
+```
 
 ### Почему Reanimated обязателен
 
@@ -60,6 +71,7 @@ module.exports = {
 | Симптом | Причина |
 | --- | --- |
 | `Tried to synchronously call a non-worklet function on the UI thread` | Плагин worklets не применён к коду библиотеки |
+| Reanimated падает при старте, в логах Metro `"fabric":false` | Выключена новая архитектура |
 | Прилипающие заголовки не двигаются | То же — worklet не собрался, смещение всегда 0 |
 | `Reanimated 4 requires react-native-worklets` | `react-native-worklets` не установлен |
 | Список пустой, ошибок нет | Скорее всего дело не в установке — см. [Диагностика](troubleshooting.md) |
