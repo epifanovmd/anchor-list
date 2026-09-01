@@ -2,7 +2,7 @@
 
 Contributions are always welcome, no matter how large or small!
 
-We want this community to be friendly and respectful to each other. Please follow it in all your interactions with the project. Before contributing, please read the [code of conduct](./CODE_OF_CONDUCT.md).
+I want this community to be friendly and respectful to each other. Please follow that in all your interactions with the project, and read the [code of conduct](./CODE_OF_CONDUCT.md) before contributing.
 
 ## Development workflow
 
@@ -110,7 +110,7 @@ The layout is described in [`docs/architecture.md`](./docs/architecture.md). In 
 
 ### Commit message convention
 
-We follow the [conventional commits specification](https://www.conventionalcommits.org/en) for our commit messages:
+I follow the [conventional commits specification](https://www.conventionalcommits.org/en) for commit messages:
 
 - `fix`: bug fixes, e.g. fix crash due to deprecated method.
 - `feat`: new features, e.g. add new method to the module.
@@ -119,7 +119,7 @@ We follow the [conventional commits specification](https://www.conventionalcommi
 - `test`: adding or updating tests, e.g. add integration tests using detox.
 - `chore`: tooling changes, e.g. change CI config.
 
-Our pre-commit hooks verify that your commit message matches this format when committing.
+The pre-commit hooks verify that your commit message matches this format when committing.
 
 
 ### Publishing to npm
@@ -201,4 +201,4 @@ When you're sending a pull request:
 - Verify that linters and tests are passing.
 - Review the documentation to make sure it looks good.
 - Follow the pull request template when opening a pull request.
-- For pull requests that change the API or implementation, discuss with maintainers first by opening an issue.
+- For pull requests that change the API or implementation, open an issue first so I can look at it.
