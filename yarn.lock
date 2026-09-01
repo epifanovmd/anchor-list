@@ -1858,8 +1858,8 @@ __metadata:
     release-it: "npm:^20.2.0"
     typescript: "npm:^6.0.3"
   peerDependencies:
-    react: "*"
-    react-native: "*"
+    react: ">=19.0.0"
+    react-native: ">=0.78.0"
     react-native-reanimated: ">=4.0.0"
     react-native-worklets: ">=0.5.0"
   languageName: unknown
