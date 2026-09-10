@@ -131,6 +131,7 @@ describe("getAxisTranslate", () => {
 describe("getAxisPinStyle", () => {
   it("вертикальные копии стоят у верхней и нижней кромок", () => {
     expect(getAxisPinStyle("start", false)).toEqual({
+      flexDirection: "column",
       left: 0,
       position: "absolute",
       right: 0,
@@ -138,6 +139,7 @@ describe("getAxisPinStyle", () => {
     });
     expect(getAxisPinStyle("end", false)).toEqual({
       bottom: 0,
+      flexDirection: "column",
       left: 0,
       position: "absolute",
       right: 0,
@@ -147,16 +149,28 @@ describe("getAxisPinStyle", () => {
   it("горизонтальные — у левой и правой", () => {
     expect(getAxisPinStyle("start", true)).toEqual({
       bottom: 0,
+      flexDirection: "row",
       left: 0,
       position: "absolute",
       top: 0,
     });
     expect(getAxisPinStyle("end", true)).toEqual({
       bottom: 0,
+      flexDirection: "row",
       position: "absolute",
       right: 0,
       top: 0,
     });
+  });
+
+  it("ось скролла — главная ось раскладки копии", () => {
+    // Копия рисуется тем же `renderItem`, что и строка внутри контента, и
+    // размер поперёк оси обязана получить такой же. Разложи слой вдоль другой
+    // оси — и копия сожмётся по своему содержимому: заголовок встанет у
+    // верхнего края ленты вместо того места, откуда исчез оригинал.
+    expect(getAxisPinStyle("start", true).flexDirection).toBe("row");
+    expect(getAxisPinStyle("end", true).flexDirection).toBe("row");
+    expect(getAxisPinStyle("start", false).flexDirection).toBe("column");
   });
 
   it("копия прижата к одной кромке оси, а не к обеим", () => {

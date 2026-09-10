@@ -18,10 +18,9 @@ interface IPinnedRailTagProps {
  * в карточке: в горизонтальном списке это вертикальные, в вертикальном —
  * горизонтальные.
  *
- * `flex: 1` здесь обязателен. Слой прижимает копию к кромке оси и растягивает
- * поперёк — то есть на всю высоту ленты; без него слот сжался бы по метке и
- * встал бы у верхнего края, а оригинал внутри карточки сидит у нижнего. На
- * стыке это выглядит как прыжок метки вверх в момент прилипания.
+ * Подпись обязана совпадать с той, что рисует `RailGroupTag`: копия подменяет
+ * оригинал на кромке, и любое расхождение видно как подмену текста в момент
+ * прилипания.
  */
 export const PinnedRailTag: FC<IPinnedRailTagProps> = memo(({ row }) => {
   const { palette } = useTheme();
@@ -37,7 +36,7 @@ export const PinnedRailTag: FC<IPinnedRailTagProps> = memo(({ row }) => {
         ]}
       >
         <Txt role={"caption"} style={{ color: palette.accentText }}>
-          {row.month.slice(0, 3)}
+          {`#${row.group}`}
         </Txt>
       </View>
     </View>
@@ -48,10 +47,10 @@ PinnedRailTag.displayName = "PinnedRailTag";
 
 const ss = StyleSheet.create({
   // `paddingBottom` повторяет `bottom` метки внутри карточки: копия обязана
-  // встать ровно туда, откуда исчез оригинал.
+  // встать ровно туда, откуда исчез оригинал. Высоту слоту даёт слой — он
+  // растягивает копию поперёк оси, — поэтому `flex` здесь не нужен.
   slot: {
     alignItems: "flex-end",
-    flex: 1,
     justifyContent: "flex-end",
     paddingBottom: 12,
   },

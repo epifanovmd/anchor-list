@@ -35,7 +35,7 @@ import type {
   IAnchorListRenderItemProps,
   IAnchorListStickyConfig,
 } from "../types";
-import { getAxisSize } from "./axis";
+import { getAxisContentStyle, getAxisSize } from "./axis";
 import { renderListSlot } from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
@@ -441,7 +441,13 @@ const AnchorListInner = <TItem,>(
           {/* Первым ребёнком: за ним следит нативное удержание позиции. */}
           <ListScrollAdjust />
 
-          <View onLayout={handleHeaderLayout}>
+          {/* Обёртка раскладывается вдоль оси по той же причине, что и слот
+              строки: иначе поперечный размер до содержимого не доходит, и
+              шапка горизонтального списка не занимает высоту ленты. */}
+          <View
+            style={getAxisContentStyle(horizontal)}
+            onLayout={handleHeaderLayout}
+          >
             {renderListSlot(ListHeaderComponent)}
           </View>
 
@@ -458,7 +464,10 @@ const AnchorListInner = <TItem,>(
 
           <ListAnchoredEndSpace />
 
-          <View onLayout={handleFooterLayout}>
+          <View
+            style={getAxisContentStyle(horizontal)}
+            onLayout={handleFooterLayout}
+          >
             {renderListSlot(ListFooterComponent)}
           </View>
 

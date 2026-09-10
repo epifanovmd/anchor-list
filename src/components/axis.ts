@@ -96,12 +96,13 @@ export const getAxisSlotStyle = ({
 };
 
 /**
- * Раскладка содержимого ячейки: та же ось, что и у слота.
+ * Раскладка узла, который держит чужое содержимое: та же ось, что и у слота.
  *
  * Зачем отдельно от {@link getAxisSlotStyle}: между слотом и тем, что вернул
  * `renderItem`, стоит ещё один узел — тот, который список меряет. Оставь его
  * раскладку по умолчанию, и поперечный размер остановится на нём: сам он от
- * слота растянется, а содержимое внутри — уже нет.
+ * слота растянется, а содержимое внутри — уже нет. Тем же заняты обёртки шапки
+ * и подвала: они тоже меряются и тоже держат чужое поддерево.
  *
  * Заодно этим задаётся место разделителя: он рисуется следом за строкой и
  * встаёт по ходу оси — под строкой в вертикальном списке, справа от неё в
@@ -151,7 +152,11 @@ export const getAxisTranslate = (
  *
  * Слой живёт снаружи `ScrollView`, в координатах экрана, поэтому копия
  * прижимается к своей кромке оси и растягивается поперёк — ровно так же, как
- * слот строки внутри контента.
+ * слот строки внутри контента. По той же причине ось скролла здесь главная ось
+ * раскладки: копию рисует тот же `renderItem`, и поперечный размер обязан
+ * дойти до неё так же, как доходит до строки. Иначе копия сжимается по своему
+ * содержимому и встаёт у начала поперечной оси — не там, откуда исчез
+ * оригинал.
  */
 export const getAxisPinStyle = (
   edge: AnchorListStickyEdge,
@@ -159,13 +164,37 @@ export const getAxisPinStyle = (
 ): ViewStyle => {
   if (horizontal) {
     return edge === "start"
-      ? { bottom: 0, left: 0, position: "absolute", top: 0 }
-      : { bottom: 0, position: "absolute", right: 0, top: 0 };
+      ? {
+          bottom: 0,
+          flexDirection: "row",
+          left: 0,
+          position: "absolute",
+          top: 0,
+        }
+      : {
+          bottom: 0,
+          flexDirection: "row",
+          position: "absolute",
+          right: 0,
+          top: 0,
+        };
   }
 
   return edge === "start"
-    ? { left: 0, position: "absolute", right: 0, top: 0 }
-    : { bottom: 0, left: 0, position: "absolute", right: 0 };
+    ? {
+        flexDirection: "column",
+        left: 0,
+        position: "absolute",
+        right: 0,
+        top: 0,
+      }
+    : {
+        bottom: 0,
+        flexDirection: "column",
+        left: 0,
+        position: "absolute",
+        right: 0,
+      };
 };
 
 /**
