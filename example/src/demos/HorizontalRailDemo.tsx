@@ -1,7 +1,7 @@
 import { AnchorList } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { RailRowData } from "../data";
 import {
@@ -129,8 +129,10 @@ export const HorizontalRailDemo: FC<IHorizontalRailDemoProps> = ({
         <DebugToggles channels={["edges", "mvcp", "layout"]} />
       </ControlPanel>
 
-      {/* Высота задаётся обёрткой, а не элементами: поперёк оси слот растянут
-          на весь вьюпорт списка, и его размер — это высота самого списка.
+      {/* Высоту ленте задаёт стенд, а не элементы: поперёк оси слот растянут
+          на весь вьюпорт списка, и карточки берут высоту от него. Обёртка
+          ставит ленту по центру остатка экрана — иначе под ней остаётся пустое
+          поле, и стенд выглядит недорисованным.
 
           Тумблер замера здесь не для красоты: `getFixedItemSize` закрывает
           самый простой путь, где ширина известна заранее, а без него список
@@ -140,23 +142,25 @@ export const HorizontalRailDemo: FC<IHorizontalRailDemoProps> = ({
           `getFixedItemSize` у живого списка нельзя — уже объявленные ширины
           останутся объявленными. Пересоздание списка — единственный способ
           перевести его на измерение, и стенд показывает именно этот способ. */}
-      <AnchorList
-        key={measured ? "measured" : "fixed"}
-        horizontal
-        data={data}
-        renderItem={renderItem}
-        keyExtractor={railRowKey}
-        getItemType={railRowType}
-        getFixedItemSize={measured ? undefined : railRowWidth}
-        estimatedItemSize={ESTIMATED_CARD_WIDTH}
-        maintainVisibleContentPosition={maintainVisibleContentPosition}
-        onStartReached={handleStartReached}
-        onStartReachedThreshold={0.4}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.4}
-        recycleItems
-        style={ss.list}
-      />
+      <View style={ss.stage}>
+        <AnchorList
+          key={measured ? "measured" : "fixed"}
+          horizontal
+          data={data}
+          renderItem={renderItem}
+          keyExtractor={railRowKey}
+          getItemType={railRowType}
+          getFixedItemSize={measured ? undefined : railRowWidth}
+          estimatedItemSize={ESTIMATED_CARD_WIDTH}
+          maintainVisibleContentPosition={maintainVisibleContentPosition}
+          onStartReached={handleStartReached}
+          onStartReachedThreshold={0.4}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.4}
+          recycleItems
+          style={ss.list}
+        />
+      </View>
     </Screen>
   );
 };
@@ -165,4 +169,5 @@ HorizontalRailDemo.displayName = "HorizontalRailDemo";
 
 const ss = StyleSheet.create({
   list: { height: RAIL_HEIGHT },
+  stage: { flex: 1, justifyContent: "center" },
 });

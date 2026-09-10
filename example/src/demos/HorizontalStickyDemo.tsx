@@ -5,7 +5,7 @@ import type {
 import { AnchorList } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { RailRowData } from "../data";
 import {
@@ -119,19 +119,24 @@ export const HorizontalStickyDemo: FC<IHorizontalStickyDemoProps> = ({
         <DebugToggles channels={["sticky", "layout"]} />
       </ControlPanel>
 
-      <AnchorList
-        horizontal
-        data={rows}
-        renderItem={renderItem}
-        keyExtractor={railRowKey}
-        getItemType={railRowType}
-        getFixedItemSize={railRowWidth}
-        estimatedItemSize={ESTIMATED_CARD_WIDTH}
-        drawDistance={600}
-        sticky={sticky}
-        recycleItems
-        style={ss.list}
-      />
+      {/* Лента занимает свою высоту, а не весь экран: поперёк оси размер
+          задаёт стенд. Обёртка ставит её по центру остатка — иначе под лентой
+          остаётся пустое поле, и стенд выглядит недорисованным. */}
+      <View style={ss.stage}>
+        <AnchorList
+          horizontal
+          data={rows}
+          renderItem={renderItem}
+          keyExtractor={railRowKey}
+          getItemType={railRowType}
+          getFixedItemSize={railRowWidth}
+          estimatedItemSize={ESTIMATED_CARD_WIDTH}
+          drawDistance={600}
+          sticky={sticky}
+          recycleItems
+          style={ss.list}
+        />
+      </View>
     </Screen>
   );
 };
@@ -140,4 +145,5 @@ HorizontalStickyDemo.displayName = "HorizontalStickyDemo";
 
 const ss = StyleSheet.create({
   list: { height: RAIL_HEIGHT },
+  stage: { flex: 1, justifyContent: "center" },
 });

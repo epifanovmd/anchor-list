@@ -58,13 +58,13 @@ export const RailCard: FC<IRailCardProps> = memo(
           </Txt>
           <Txt role={"body"}>{row.title}</Txt>
           <Txt role={"caption"} muted>
-            {`${row.width} px`}
+            {`группа #${row.group} · ${row.width} px`}
           </Txt>
         </View>
 
         {withTag && row.isGroupTail ? (
           <RailGroupTag
-            month={row.month}
+            group={row.group}
             stickyOffset={stickyOffset}
             stickyPinned={stickyPinned}
           />

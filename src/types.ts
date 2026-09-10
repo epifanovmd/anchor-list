@@ -430,7 +430,12 @@ export interface IAnchorListProps<TItem> {
   ListFooterComponent?: ComponentType<unknown> | ReactElement | null;
   /** Показывается вместо элементов, когда данные пусты. */
   ListEmptyComponent?: ComponentType<unknown> | ReactElement | null;
-  /** Рисуется внутри ячейки, под содержимым строки, и входит в её высоту. */
+  /**
+   * Рисуется внутри ячейки, следом за содержимым строки, и входит в её размер.
+   *
+   * Место задаёт ось: под строкой в вертикальном списке, справа от неё в
+   * горизонтальном.
+   */
   ItemSeparatorComponent?: ComponentType<unknown> | null;
 
   /** Прижать контент к концу, когда он короче вьюпорта. */

@@ -19,7 +19,9 @@ export interface IRailCard {
   width: number;
   /** Месяц, к которому относится карточка. */
   month: string;
-  /** Последняя карточка месяца — под ней рисуется метка группы. */
+  /** Номер группы — им подписана её метка. */
+  group: number;
+  /** Последняя карточка группы — на ней рисуется метка. */
   isGroupTail: boolean;
 }
 
@@ -29,21 +31,19 @@ export type RailRowData =
   | { type: "month"; key: string; month: string }
   | { type: "spinner"; key: string; edge: "start" | "end" };
 
-const MONTHS = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-];
 /** Ширины карточек; повторяются с периодом, взаимно простым с длиной группы. */
 const WIDTHS = [132, 196, 108, 164, 240, 144, 180];
+/** Карточек в месяце и в группе: границы тех и других намеренно чередуются. */
+const CARDS_PER_MONTH = 8;
+const CARDS_PER_GROUP = 4;
 
 const widthOf = (seq: number) => WIDTHS[seq % WIDTHS.length]!;
-const monthOf = (seq: number) => MONTHS[Math.floor(seq / 8) % MONTHS.length]!;
+// Счётчиком, а не названием месяца: названий восемь, и на ленте в шестьсот
+// карточек они пошли бы по кругу — прилипшую метку стало бы не отличить от
+// следующей, а стенд ровно про это и есть.
+const monthOf = (seq: number) =>
+  `Месяц ${Math.floor(seq / CARDS_PER_MONTH) + 1}`;
+const groupOf = (seq: number) => Math.floor(seq / CARDS_PER_GROUP) + 1;
 
 export const createCard = (seq: number): IRailCard => ({
   type: "card",
@@ -52,8 +52,9 @@ export const createCard = (seq: number): IRailCard => ({
   title: `Карточка ${seq}`,
   width: widthOf(seq),
   month: monthOf(seq),
+  group: groupOf(seq),
   // Группа — четыре карточки подряд; хвост несёт метку.
-  isGroupTail: seq % 4 === 3,
+  isGroupTail: seq % CARDS_PER_GROUP === CARDS_PER_GROUP - 1,
 });
 
 /** Диапазон карточек `[from, to)`. */
@@ -132,7 +133,7 @@ export const railRowWidth = (row: RailRowData): number | undefined => {
 /** Зазор между карточками; создаётся отступом слева. */
 export const CARD_GAP = 8;
 /** Ширина метки месяца — она же прилипает к левой кромке. */
-export const MONTH_MARKER_WIDTH = 92;
+export const MONTH_MARKER_WIDTH = 104;
 /** Ширина спиннера подгрузки. */
 export const RAIL_SPINNER_WIDTH = 120;
 /** Ширина метки группы: до неё список доводит сдвиг у начала группы. */

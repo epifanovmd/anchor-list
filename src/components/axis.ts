@@ -57,6 +57,12 @@ export interface IAxisSlot {
  * горизонтальном, а размер вдоль оси остаётся за содержимым. Именно поэтому
  * поперечная кромка задаётся обеими сторонами, а не размером: размера вьюпорта
  * слот не знает, и знать ему его незачем.
+ *
+ * **Ось скролла — главная ось раскладки слота.** Иначе поперечный размер до
+ * содержимого не доходит: flexbox растягивает детей по поперечной оси и не
+ * трогает главную. Разложи горизонтальный слот колонкой — и строка растянется
+ * по его ширине, которая сама зависит от строки, а высоту возьмёт свою: на
+ * экране карточка не достаёт до краёв ленты, хотя слот на всю её высоту.
  */
 export const getAxisSlotStyle = ({
   position,
@@ -64,8 +70,20 @@ export const getAxisSlotStyle = ({
   horizontal,
 }: IAxisSlot): ViewStyle => {
   const style: ViewStyle = horizontal
-    ? { bottom: 0, left: position, position: "absolute", top: 0 }
-    : { left: 0, position: "absolute", right: 0, top: position };
+    ? {
+        bottom: 0,
+        flexDirection: "row",
+        left: position,
+        position: "absolute",
+        top: 0,
+      }
+    : {
+        flexDirection: "column",
+        left: 0,
+        position: "absolute",
+        right: 0,
+        top: position,
+      };
 
   if (clipSize === undefined) return style;
 
@@ -76,6 +94,27 @@ export const getAxisSlotStyle = ({
 
   return style;
 };
+
+/**
+ * Раскладка содержимого ячейки: та же ось, что и у слота.
+ *
+ * Зачем отдельно от {@link getAxisSlotStyle}: между слотом и тем, что вернул
+ * `renderItem`, стоит ещё один узел — тот, который список меряет. Оставь его
+ * раскладку по умолчанию, и поперечный размер остановится на нём: сам он от
+ * слота растянется, а содержимое внутри — уже нет.
+ *
+ * Заодно этим задаётся место разделителя: он рисуется следом за строкой и
+ * встаёт по ходу оси — под строкой в вертикальном списке, справа от неё в
+ * горизонтальном.
+ *
+ * Ссылка постоянная: ось за жизнь списка не меняется, а ячейки
+ * перерисовываются на каждом шаге скролла.
+ */
+export const getAxisContentStyle = (horizontal: boolean): ViewStyle =>
+  horizontal ? CONTENT_ROW : CONTENT_COLUMN;
+
+const CONTENT_ROW: ViewStyle = { flexDirection: "row" };
+const CONTENT_COLUMN: ViewStyle = { flexDirection: "column" };
 
 /**
  * Длина вдоль оси скролла: высота контента, распорка, подрезанный слот.

@@ -1,5 +1,6 @@
 import {
   getAxisAnchorStyle,
+  getAxisContentStyle,
   getAxisLengthStyle,
   getAxisPinStyle,
   getAxisSize,
@@ -20,6 +21,7 @@ describe("getAxisSize", () => {
 describe("getAxisSlotStyle", () => {
   it("вертикальный слот несёт позицию сверху и растянут по ширине", () => {
     expect(getAxisSlotStyle({ position: 240, horizontal: false })).toEqual({
+      flexDirection: "column",
       left: 0,
       position: "absolute",
       right: 0,
@@ -30,6 +32,7 @@ describe("getAxisSlotStyle", () => {
   it("горизонтальный слот несёт позицию слева и растянут по высоте", () => {
     expect(getAxisSlotStyle({ position: 240, horizontal: true })).toEqual({
       bottom: 0,
+      flexDirection: "row",
       left: 240,
       position: "absolute",
       top: 0,
@@ -67,10 +70,41 @@ describe("getAxisSlotStyle", () => {
     expect(horizontal.overflow).toBe("hidden");
   });
 
+  it("ось скролла — главная ось раскладки слота", () => {
+    // Содержимое строки обязано растягиваться поперёк оси: там слот доходит до
+    // обеих кромок вьюпорта, и его размер известен. Разложи слот вдоль другой
+    // оси — и содержимое растянется по размеру, который сам зависит от
+    // содержимого, а поперёк возьмёт свой: карточка не дойдёт до краёв ленты,
+    // хотя слот на всю её высоту.
+    expect(
+      getAxisSlotStyle({ position: 0, horizontal: true }).flexDirection,
+    ).toBe("row");
+    expect(
+      getAxisSlotStyle({ position: 0, horizontal: false }).flexDirection,
+    ).toBe("column");
+  });
+
   it("без подрезки содержимое не обрезается", () => {
     expect(
       getAxisSlotStyle({ position: 0, horizontal: false }).overflow,
     ).toBeUndefined();
+  });
+});
+
+describe("getAxisContentStyle", () => {
+  it("ячейка раскладывается вдоль оси скролла", () => {
+    // Та же причина, что и у слота: содержимое ячейки — это то, что вернул
+    // `renderItem`, и поперёк оси оно обязано получить размер вьюпорта, а не
+    // свой собственный.
+    expect(getAxisContentStyle(true).flexDirection).toBe("row");
+    expect(getAxisContentStyle(false).flexDirection).toBe("column");
+  });
+
+  it("отдаёт одну и ту же ссылку: стиль ячейки не меняется за жизнь списка", () => {
+    // Иначе каждый рендер ячейки давал бы новый объект стиля — а ячейки
+    // перерисовываются на каждом шаге скролла.
+    expect(getAxisContentStyle(true)).toBe(getAxisContentStyle(true));
+    expect(getAxisContentStyle(false)).toBe(getAxisContentStyle(false));
   });
 });
 

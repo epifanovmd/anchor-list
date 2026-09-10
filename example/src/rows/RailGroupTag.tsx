@@ -8,7 +8,7 @@ import { GROUP_TAG_WIDTH } from "../data";
 import { Txt, useTheme } from "../ui";
 
 interface IRailGroupTagProps {
-  month: string;
+  group: number;
   /** Смещение прилипания от списка: применяется только к метке. */
   stickyOffset?: SharedValue<number>;
   /** Метка сейчас нарисована слоем поверх списка — свою нужно спрятать. */
@@ -27,7 +27,7 @@ interface IRailGroupTagProps {
  * поехала бы раскладка карточки.
  */
 export const RailGroupTag: FC<IRailGroupTagProps> = memo(
-  ({ month, stickyOffset, stickyPinned }) => {
+  ({ group, stickyOffset, stickyPinned }) => {
     const { palette } = useTheme();
 
     const style = useAnimatedStyle(() => ({
@@ -44,7 +44,7 @@ export const RailGroupTag: FC<IRailGroupTagProps> = memo(
         ]}
       >
         <Txt role={"caption"} style={{ color: palette.accentText }}>
-          {month.slice(0, 3)}
+          {`#${group}`}
         </Txt>
       </Animated.View>
     );

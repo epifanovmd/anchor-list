@@ -16,7 +16,7 @@ import {
 } from "../model";
 import { listPerf } from "../perf";
 import type { IAnchorListRenderItemProps } from "../types";
-import { getAxisSize } from "./axis";
+import { getAxisContentStyle, getAxisSize } from "./axis";
 import { shouldMeasureOnBind, shouldMeasureOnLayout } from "./measure-gate";
 
 /** Пропы содержимого ячейки; приходят адресными сигналами её контейнера. */
@@ -154,6 +154,7 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
       <ListItemKeyProvider value={itemKey}>
         <View
           ref={contentRef}
+          style={getAxisContentStyle(horizontal)}
           onLayout={fixedSize ? undefined : handleLayout}
           collapsable={false}
         >
