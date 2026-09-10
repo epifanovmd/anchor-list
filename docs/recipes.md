@@ -383,5 +383,5 @@ const viewabilityPairs = useMemo<IAnchorListViewabilityPair<ChatRow>[]>(
 
 ## Дальше
 
-- [`example/`](../example) — восемь работающих стендов
+- [`example/`](../example) — десять работающих стендов
 - [Симптомы](troubleshooting.md) — если что-то из этого повело себя не так

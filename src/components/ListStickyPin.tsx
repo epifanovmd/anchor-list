@@ -1,5 +1,4 @@
 import React, { memo, useEffect, useMemo } from "react";
-import { StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,11 +14,13 @@ import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
   ListItemKeyProvider,
+  useListHorizontal,
   useListRuntime,
   useListScrollOffset,
   useListStickyPinned,
 } from "../model";
 import type { IAnchorListStickyConfig } from "../types";
+import { getAxisPinStyle, getAxisTranslate } from "./axis";
 import type { IAnchorListStickyOverlayProps } from "./ListStickyOverlay";
 import { resolveOverlayRenderer } from "./sticky-placement";
 
@@ -39,6 +40,7 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
     const runtime = useListRuntime();
     const scrollOffset = useListScrollOffset();
     const pinnedIndices = useListStickyPinned();
+    const horizontal = useListHorizontal();
 
     const index =
       useListSignal(
@@ -116,7 +118,12 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
 
       return {
         opacity: visible ? 1 : 0,
-        transform: [{ translateY: edge === "start" ? shift : -shift }],
+        // Отступ уводит копию внутрь вьюпорта, и с конечной кромки — в
+        // обратную сторону: от начала контента у начальной, к началу у конечной.
+        transform: getAxisTranslate(
+          edge === "start" ? shift : -shift,
+          horizontal,
+        ),
       };
     });
 
@@ -154,7 +161,7 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
     // рендере, и на кадр показал бы копию не там, где она нужна.
     return (
       <Animated.View
-        style={[edge === "start" ? styles.start : styles.end, style]}
+        style={[getAxisPinStyle(edge, horizontal), style]}
         pointerEvents={"none"}
       >
         {index >= 0 && geometry !== undefined && itemKey !== undefined ? (
@@ -171,8 +178,3 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
 );
 
 ListStickyPin.displayName = "ListStickyPin";
-
-const styles = StyleSheet.create({
-  end: { bottom: 0, left: 0, position: "absolute", right: 0 },
-  start: { left: 0, position: "absolute", right: 0, top: 0 },
-});

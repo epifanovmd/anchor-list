@@ -9,9 +9,14 @@ import React, {
 import { LayoutChangeEvent, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
-import { ListItemKeyProvider, useListRuntime } from "../model";
+import {
+  ListItemKeyProvider,
+  useListHorizontal,
+  useListRuntime,
+} from "../model";
 import { listPerf } from "../perf";
 import type { IAnchorListRenderItemProps } from "../types";
+import { getAxisSize } from "./axis";
 import { shouldMeasureOnBind, shouldMeasureOnLayout } from "./measure-gate";
 
 /** Пропы содержимого ячейки; приходят адресными сигналами её контейнера. */
@@ -39,8 +44,10 @@ export interface IAnchorListItemContentProps {
  * перемонтируется, и всё, что ячейка хранит в себе, обязано знать, к какому
  * элементу относится. На этом стоит `useAnchorListItemState`.
  *
- * Здесь же живёт измерение высоты, и оно устроено осторожнее, чем кажется:
- * - высота читается через `measure` после коммита, а `onLayout` служит лишь
+ * Здесь же живёт измерение размера строки вдоль оси скролла — высоты в
+ * вертикальном списке, ширины в горизонтальном, — и оно устроено осторожнее,
+ * чем кажется:
+ * - размер читается через `measure` после коммита, а `onLayout` служит лишь
  *   триггером: событие может прийти с геометрией, посчитанной до смены
  *   содержимого, а `measure` читает узел таким, какой он есть сейчас;
  * - замер принимается, только пока контейнер всё ещё рисует тот же ключ, —
@@ -64,10 +71,11 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
     stickyPinned,
   }) => {
     const runtime = useListRuntime();
+    const horizontal = useListHorizontal();
     const contentRef = useRef<View>(null);
     const measureRequest = useRef(0);
-    /** Высота, которую вернул последний замер этой ячейки. */
-    const measuredHeight = useRef<number | undefined>(undefined);
+    /** Размер, который вернул последний замер этой ячейки. */
+    const measuredSize = useRef<number | undefined>(undefined);
     const previousKey = useRef<string | undefined>(undefined);
     const previousData = useRef<unknown>(undefined);
     const fixedSize = runtime.isItemSizeFixed(itemKey);
@@ -79,13 +87,15 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
 
       // `measure` из layout effect читает уже закоммиченный нативный узел и не
       // добавляет ещё один кадр ожидания перед пересчётом виртуализации.
-      contentRef.current?.measure((_x, _y, _width, height) => {
+      contentRef.current?.measure((_x, _y, width, height) => {
         if (request !== measureRequest.current) return;
 
-        measuredHeight.current = height;
-        runtime.setContainerItemSize(id, itemKey, height);
+        const size = getAxisSize(width, height, horizontal);
+
+        measuredSize.current = size;
+        runtime.setContainerItemSize(id, itemKey, size);
       });
-    }, [fixedSize, id, itemKey, runtime]);
+    }, [fixedSize, horizontal, id, itemKey, runtime]);
 
     // При перепривязке с той же высотой `onLayout` может не прийти.
     useLayoutEffect(() => {
@@ -120,12 +130,14 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
     const handleLayout = useCallback(
       (event: LayoutChangeEvent) => {
         // Сверка идёт с размером, который список знает для этой строки: после
-        // перепривязки высота узла меняется на её собственную, и замерять её
+        // перепривязки размер узла меняется на её собственный, и замерять его
         // заново значит подтверждать уже известное.
-        const known =
-          runtime.getKnownItemSize(itemKey) ?? measuredHeight.current;
+        const known = runtime.getKnownItemSize(itemKey) ?? measuredSize.current;
+        const { width, height } = event.nativeEvent.layout;
 
-        if (!shouldMeasureOnLayout(event.nativeEvent.layout.height, known)) {
+        const size = getAxisSize(width, height, horizontal);
+
+        if (!shouldMeasureOnLayout(size, known)) {
           listPerf.count("measureSkipped");
 
           return;
@@ -133,7 +145,7 @@ export const ListItemContent = memo<IAnchorListItemContentProps>(
 
         measureCurrentContent();
       },
-      [itemKey, measureCurrentContent, runtime],
+      [horizontal, itemKey, measureCurrentContent, runtime],
     );
 
     listPerf.count("cellRender");

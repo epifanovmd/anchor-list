@@ -25,7 +25,7 @@
 | `maintainVisibleContentPosition` | `maintainVisibleContentPosition` | Не `{minIndexForVisible}`, а `{data, size, shouldRestorePosition}` |
 | `initialScrollIndex` | `initialScroll={{ type: "index", index }}` | Плюс варианты `end` и `offset` |
 | `inverted` | — | **Нет.** См. ниже |
-| `horizontal` | — | **Нет.** Список вертикальный |
+| `horizontal` | `horizontal` | Та же семантика; RTL не поддерживается |
 | `numColumns` | — | **Нет** |
 | `refreshControl` / `onRefresh` | — | **Нет** |
 | `stickyHeaderIndices` | `sticky` | Мощнее: обе кромки, два режима, отступы и пределы |
@@ -84,7 +84,8 @@
 | Запас отрисовки за пределами экрана | `drawDistance` |
 | Удержание видимой позиции | `maintainVisibleContentPosition` — раздельно по данным и по размерам |
 | Событие первой раскладки | `onLoad` |
-| Горизонтальная ось, колонки, masonry | **Нет** — см. [Ограничения](limitations.md) |
+| Горизонтальная ось | `horizontal` |
+| Колонки, masonry | **Нет** — см. [Ограничения](limitations.md) |
 
 Что есть сверх этого: удержание позиции по двум причинам раздельно, прилипание
 на обеих кромках сразу, состояние на UI-потоке, распорки под панель ввода —

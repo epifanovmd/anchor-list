@@ -38,12 +38,19 @@ const VIEWPORT_HEIGHT = 700;
 const MAX_SCROLL = CONTENT_HEIGHT - VIEWPORT_HEIGHT;
 /** Смещение вдали от обеих кромок: там работает шаг, а не досылка. */
 const MIDDLE = 1000;
+/** Значение поперечной оси: обработчик не должен взять его ни разу. */
+const CROSS_AXIS_TRAP = 777;
 
-/** Событие скролла в том виде, в каком его читает обработчик. */
+/**
+ * Событие скролла в том виде, в каком его читает обработчик.
+ *
+ * Обе оси сразу: нативное событие всегда несёт и ту, и другую, и проверять
+ * нужно как раз то, что обработчик берёт из него нужную.
+ */
 interface IScrollEvent {
-  contentOffset: { y: number };
-  contentSize: { height: number };
-  layoutMeasurement: { height: number };
+  contentOffset: { x: number; y: number };
+  contentSize: { width: number; height: number };
+  layoutMeasurement: { width: number; height: number };
 }
 
 interface IScrollHandlers {
@@ -56,10 +63,23 @@ interface IScrollHandlers {
 
 const sharedValue = <T>(value: T) => ({ value }) as SharedValue<T>;
 
+/**
+ * Событие вертикального скролла.
+ *
+ * По другой оси нарочно стоят числа, которых обработчик увидеть не должен:
+ * возьми он не ту, тест упадёт на конкретном значении, а не на «примерно там».
+ */
 const scrollTo = (y: number): IScrollEvent => ({
-  contentOffset: { y },
-  contentSize: { height: CONTENT_HEIGHT },
-  layoutMeasurement: { height: VIEWPORT_HEIGHT },
+  contentOffset: { x: CROSS_AXIS_TRAP, y },
+  contentSize: { width: CROSS_AXIS_TRAP, height: CONTENT_HEIGHT },
+  layoutMeasurement: { width: CROSS_AXIS_TRAP, height: VIEWPORT_HEIGHT },
+});
+
+/** То же событие для горизонтального списка: оси поменяны местами. */
+const scrollToX = (x: number): IScrollEvent => ({
+  contentOffset: { x, y: CROSS_AXIS_TRAP },
+  contentSize: { width: CONTENT_HEIGHT, height: CROSS_AXIS_TRAP },
+  layoutMeasurement: { width: VIEWPORT_HEIGHT, height: CROSS_AXIS_TRAP },
 });
 
 const setup = (
@@ -83,6 +103,7 @@ const setup = (
     isDragging,
     isMomentum,
     onScroll,
+    horizontal: false,
     onBeginDrag: jest.fn(),
     onEndDrag: jest.fn(),
     onMomentumEnd: jest.fn(),
@@ -90,7 +111,9 @@ const setup = (
   });
 
   const seed = (offset: number) => {
-    handlers.onScroll(scrollTo(offset));
+    handlers.onScroll(
+      overrides.horizontal ? scrollToX(offset) : scrollTo(offset),
+    );
     onScroll.mockClear();
   };
 
@@ -289,5 +312,52 @@ describe("useListScrollHandler", () => {
     // Жест кончился: остаток обязан дойти, иначе диапазон останется старым.
     handlers.onEndDrag(scrollTo(MIDDLE + 8));
     expect(onScroll).toHaveBeenCalledWith(MIDDLE + 8, expect.any(Number));
+  });
+  describe("горизонтальная ось", () => {
+    it("берёт смещение из X, а не из Y", () => {
+      const { handlers, scrollOffset } = setup({ horizontal: true });
+
+      handlers.onScroll(scrollToX(MIDDLE + 5));
+
+      expect(scrollOffset.value).toBe(MIDDLE + 5);
+    });
+
+    it("не путает оси в вертикальном списке", () => {
+      // Событие несёт обе оси всегда: возьми обработчик не ту, смещение
+      // застыло бы на значении поперечной оси, а список — на первом кадре.
+      const { handlers, scrollOffset } = setup();
+
+      handlers.onScroll(scrollTo(MIDDLE + 5));
+
+      expect(scrollOffset.value).toBe(MIDDLE + 5);
+      expect(scrollOffset.value).not.toBe(CROSS_AXIS_TRAP);
+    });
+
+    it("считает кромку по ширине контента и вьюпорта", () => {
+      // У самой кромки шаг не применяется — движение меньше шага обязано
+      // дойти. Считай обработчик границу по высоте, кромка оказалась бы не
+      // там, и флаг `isAtEnd` загорелся бы посреди контента.
+      const { handlers, onScroll, seed } = setup({ horizontal: true });
+
+      seed(MAX_SCROLL - 20);
+      handlers.onScroll(scrollToX(MAX_SCROLL));
+
+      expect(onScroll).toHaveBeenCalledWith(MAX_SCROLL, expect.any(Number));
+    });
+
+    it("досылает остаток движения по той же оси", () => {
+      const { handlers, onScroll, seed } = setup({ horizontal: true });
+
+      seed(MIDDLE);
+      handlers.onScroll(scrollToX(MIDDLE + 8));
+      expect(onScroll).not.toHaveBeenCalled();
+
+      handlers.onEndDrag(scrollToX(MIDDLE + 8));
+      expect(onScroll).toHaveBeenCalledWith(MIDDLE + 8, expect.any(Number));
+
+      onScroll.mockClear();
+      handlers.onMomentumEnd(scrollToX(MIDDLE + 30));
+      expect(onScroll).toHaveBeenCalledWith(MIDDLE + 30, expect.any(Number));
+    });
   });
 });

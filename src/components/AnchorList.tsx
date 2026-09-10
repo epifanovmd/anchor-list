@@ -8,7 +8,13 @@ import React, {
   useState,
   useSyncExternalStore,
 } from "react";
-import { LayoutChangeEvent, Platform, StyleSheet, View } from "react-native";
+import {
+  I18nManager,
+  LayoutChangeEvent,
+  Platform,
+  StyleSheet,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedProps,
   useAnimatedRef,
@@ -29,6 +35,7 @@ import type {
   IAnchorListRenderItemProps,
   IAnchorListStickyConfig,
 } from "../types";
+import { getAxisSize } from "./axis";
 import { renderListSlot } from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
@@ -63,6 +70,17 @@ const SCROLL_EVENT_THROTTLE = 1;
 const KEYBOARD_DISMISS_MODE = Platform.OS === "ios" ? "interactive" : "on-drag";
 
 /**
+ * Предупреждение о неподдержанном сочетании; печатается один раз на процесс.
+ *
+ * Зачем нужно: под RTL нативный слой отсчитывает смещение горизонтального
+ * скролла от правой кромки, а нативное удержание позиции на Android этого не
+ * учитывает — компенсация уезжает в противоположную сторону. Со стороны списка
+ * это не чинится, и молчать об этом хуже, чем сказать: симптом выглядит как
+ * случайные прыжки контента, и искать его будут где угодно, только не здесь.
+ */
+let rtlWarned = false;
+
+/**
  * Виртуализированный список.
  *
  * Диапазон отрисовки, позиции и привязка контейнеров считаются в `ListRuntime`
@@ -82,6 +100,7 @@ const AnchorListInner = <TItem,>(
     ListFooterComponent,
     ListEmptyComponent,
     ItemSeparatorComponent,
+    horizontal = false,
     style,
     contentContainerStyle,
     maintainVisibleContentPosition,
@@ -119,6 +138,18 @@ const AnchorListInner = <TItem,>(
   const pinnedStartIndex = useSharedValue(-1);
   const pinnedEndIndex = useSharedValue(-1);
 
+  useEffect(() => {
+    if (!__DEV__ || rtlWarned || !horizontal || !I18nManager.isRTL) return;
+
+    rtlWarned = true;
+    console.warn(
+      "AnchorList: horizontal + RTL не поддерживается. Под RTL нативный слой " +
+        "отсчитывает смещение от правой кромки, а нативное удержание позиции " +
+        "этого не учитывает и компенсирует в обратную сторону. " +
+        "См. docs/limitations.md.",
+    );
+  }, [horizontal]);
+
   const insetEndLayout = useInsetEnd({
     insetEnd,
     alignItemsAtEnd: props.alignItemsAtEnd ?? false,
@@ -129,6 +160,7 @@ const AnchorListInner = <TItem,>(
     scrollLength: edgeScrollLength,
     contentSize: edgeContentSize,
     scrollRef,
+    horizontal,
     scrollOffset,
     isDragging,
     isMomentum,
@@ -164,7 +196,9 @@ const AnchorListInner = <TItem,>(
     runtime.setAdapter({
       scrollToEnd: animated => scrollRef.current?.scrollToEnd({ animated }),
       scrollToOffset: (offset, animated) =>
-        scrollRef.current?.scrollTo({ y: offset, animated }),
+        scrollRef.current?.scrollTo(
+          horizontal ? { x: offset, animated } : { y: offset, animated },
+        ),
       getOffset: () => scrollOffset.value,
     });
 
@@ -172,7 +206,7 @@ const AnchorListInner = <TItem,>(
       runtime.setAdapter(undefined);
       runtime.dispose();
     };
-  }, [runtime, scrollRef, scrollOffset]);
+  }, [runtime, scrollRef, scrollOffset, horizontal]);
 
   useImperativeHandle(
     ref,
@@ -202,6 +236,7 @@ const AnchorListInner = <TItem,>(
       scrollOffset,
       sticky: stickyConfigs,
       stickyPinned: { start: pinnedStartIndex, end: pinnedEndIndex },
+      horizontal,
     }),
     [
       store,
@@ -210,6 +245,7 @@ const AnchorListInner = <TItem,>(
       stickyConfigs,
       pinnedStartIndex,
       pinnedEndIndex,
+      horizontal,
     ],
   );
 
@@ -295,33 +331,39 @@ const AnchorListInner = <TItem,>(
 
   const handleContentSizeChange = useCallback(
     (width: number, height: number) => {
-      runtime.setContentSize(height);
+      runtime.setContentSize(getAxisSize(width, height, horizontal));
       onContentSizeChange?.(width, height);
     },
-    [runtime, onContentSizeChange],
+    [runtime, onContentSizeChange, horizontal],
   );
 
   const handleLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
 
-      runtime.setScrollLength(height);
+      runtime.setScrollLength(getAxisSize(width, height, horizontal));
       runtime.setScrollSize(width, height);
       onLayout?.(event);
     },
-    [runtime, onLayout],
+    [runtime, onLayout, horizontal],
   );
 
   const handleHeaderLayout = useCallback(
-    (event: LayoutChangeEvent) =>
-      runtime.setHeaderSize(event.nativeEvent.layout.height),
-    [runtime],
+    (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+
+      runtime.setHeaderSize(getAxisSize(width, height, horizontal));
+    },
+    [runtime, horizontal],
   );
 
   const handleFooterLayout = useCallback(
-    (event: LayoutChangeEvent) =>
-      runtime.setFooterSize(event.nativeEvent.layout.height),
-    [runtime],
+    (event: LayoutChangeEvent) => {
+      const { width, height } = event.nativeEvent.layout;
+
+      runtime.setFooterSize(getAxisSize(width, height, horizontal));
+    },
+    [runtime, horizontal],
   );
 
   const updateScroll = useCallback(
@@ -348,7 +390,10 @@ const AnchorListInner = <TItem,>(
   // знает: без инсета он доходит до кромки экрана, а контент — только до панели
   // ввода.
   const scrollIndicatorProps = useAnimatedProps(() => ({
-    scrollIndicatorInsets: getScrollIndicatorInsets(insetEnd?.value ?? 0),
+    scrollIndicatorInsets: getScrollIndicatorInsets(
+      insetEnd?.value ?? 0,
+      horizontal,
+    ),
   }));
 
   const scrollHandler = useListScrollHandler({
@@ -359,6 +404,7 @@ const AnchorListInner = <TItem,>(
     isMomentum,
     publishedIsMomentum: sharedValues?.isMomentum,
     onScroll: updateScroll,
+    horizontal,
     scrollThrottleDistance,
     onBeginDrag: handleScrollBeginDrag,
     onEndDrag: handleScrollEndDrag,
@@ -376,6 +422,7 @@ const AnchorListInner = <TItem,>(
       <View style={style}>
         <Animated.ScrollView
           ref={scrollRef}
+          horizontal={horizontal}
           style={styles.scroll}
           contentContainerStyle={contentContainerStyle}
           onLayout={handleLayout}
@@ -415,9 +462,7 @@ const AnchorListInner = <TItem,>(
             {renderListSlot(ListFooterComponent)}
           </View>
 
-          {insetEnd ? (
-            <ListInsetEndSpace height={insetEndLayout.spacer} />
-          ) : null}
+          {insetEnd ? <ListInsetEndSpace size={insetEndLayout.spacer} /> : null}
         </Animated.ScrollView>
 
         <ListStickyOverlay

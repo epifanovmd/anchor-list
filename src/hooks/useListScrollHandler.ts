@@ -66,6 +66,14 @@ export interface IAnchorListScrollHandlerOptions {
    */
   onScroll: (offset: number, time: number) => void;
   /**
+   * Ось списка: смещение и границы берутся по X, а не по Y.
+   *
+   * Обычным значением, а не функцией выбора: обработчик — worklet, и всё, из
+   * чего он считает, обязано быть либо примитивом в замыкании, либо worklet-ом.
+   * За жизнь списка ось не меняется, поэтому примитива достаточно.
+   */
+  horizontal: boolean;
+  /**
    * Шаг перехода в JS, px; по умолчанию {@link DEFAULT_SCROLL_THROTTLE_DISTANCE}.
    *
    * У кромок не применяется — там точность важнее экономии, см.
@@ -101,6 +109,7 @@ export const useListScrollHandler = ({
   isMomentum,
   publishedIsMomentum,
   onScroll,
+  horizontal,
   scrollThrottleDistance = DEFAULT_SCROLL_THROTTLE_DISTANCE,
   onBeginDrag,
   onEndDrag,
@@ -111,7 +120,7 @@ export const useListScrollHandler = ({
 
   return useAnimatedScrollHandler({
     onScroll: event => {
-      const offset = event.contentOffset.y;
+      const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
 
       // До проверки шага: наружу смещение обязано идти каждым кадром, а шаг
       // ограничивает только пересчёт диапазона.
@@ -122,8 +131,9 @@ export const useListScrollHandler = ({
 
       // Границы берутся из самого события: размеры контента и вьюпорта
       // приходят вместе со смещением, и спрашивать их у JS не нужно.
-      const maxScroll =
-        event.contentSize.height - event.layoutMeasurement.height;
+      const maxScroll = horizontal
+        ? event.contentSize.width - event.layoutMeasurement.width
+        : event.contentSize.height - event.layoutMeasurement.height;
       const atEdge =
         offset <= EDGE_REPORT_PX || offset >= maxScroll - EDGE_REPORT_PX;
 
@@ -146,7 +156,7 @@ export const useListScrollHandler = ({
       isDragging.value = false;
       if (publishedIsDragging) publishedIsDragging.value = false;
 
-      const offset = event.contentOffset.y;
+      const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
 
       if (offset !== lastReportedScroll.value) {
         lastReportedScroll.value = offset;
@@ -165,7 +175,7 @@ export const useListScrollHandler = ({
       isMomentum.value = false;
       if (publishedIsMomentum) publishedIsMomentum.value = false;
 
-      const offset = event.contentOffset.y;
+      const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
 
       if (offset !== lastReportedScroll.value) {
         lastReportedScroll.value = offset;

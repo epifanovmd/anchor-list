@@ -1,9 +1,14 @@
 import React, { ComponentType, memo, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 
 import { useListSignals } from "../hooks";
-import { POSITION_OUT_OF_VIEW, useListRuntime } from "../model";
+import {
+  POSITION_OUT_OF_VIEW,
+  useListHorizontal,
+  useListRuntime,
+} from "../model";
 import type { IAnchorListRenderItemProps } from "../types";
+import { getAxisSlotStyle } from "./axis";
 import { getContainerSignalNames } from "./container-signals";
 import type { IAnchorListItemContentProps } from "./ListItemContent";
 import { ListItemContent } from "./ListItemContent";
@@ -35,6 +40,7 @@ interface IAnchorListItemContainerProps {
 export const ListItemContainer = memo<IAnchorListItemContainerProps>(
   ({ id, renderItem, extraData, ItemSeparatorComponent }) => {
     const runtime = useListRuntime();
+    const horizontal = useListHorizontal();
     const signalNames = useMemo(() => getContainerSignalNames(id), [id]);
     const [
       position,
@@ -93,11 +99,11 @@ export const ListItemContainer = memo<IAnchorListItemContainerProps>(
       );
     }
 
-    const style = [
-      styles.container,
-      { top: resolvedPosition },
-      clipped ? { height: resolvedSize, overflow: "hidden" as const } : null,
-    ];
+    const style = getAxisSlotStyle({
+      position: resolvedPosition,
+      clipSize: clipped ? resolvedSize : undefined,
+      horizontal,
+    });
 
     return (
       <View style={style}>
@@ -108,11 +114,3 @@ export const ListItemContainer = memo<IAnchorListItemContainerProps>(
 );
 
 ListItemContainer.displayName = "ListItemContainer";
-
-const styles = StyleSheet.create({
-  container: {
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
-});

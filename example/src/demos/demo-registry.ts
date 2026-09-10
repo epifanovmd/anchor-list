@@ -3,6 +3,8 @@ import type { FC } from "react";
 import { ComposerInsetDemo } from "./ComposerInsetDemo";
 import { EndlessFeedDemo } from "./EndlessFeedDemo";
 import { HoldPositionDemo } from "./HoldPositionDemo";
+import { HorizontalRailDemo } from "./HorizontalRailDemo";
+import { HorizontalStickyDemo } from "./HorizontalStickyDemo";
 import { JumpToMessageDemo } from "./JumpToMessageDemo";
 import { LiveStateDemo } from "./LiveStateDemo";
 import { PinnedAnchorsDemo } from "./PinnedAnchorsDemo";
@@ -18,6 +20,8 @@ export type DemoId =
   | "pinned-anchors"
   | "live-state"
   | "jump-to-message"
+  | "horizontal-rail"
+  | "horizontal-sticky"
   | "throughput";
 
 /** Что нужно витрине о каждом стенде. */
@@ -90,6 +94,22 @@ export const DEMOS: IDemoEntry[] = [
     description: "Скролл по ключу, индексу и к концу контента; опрос геометрии",
     covers: ["scrollToKey", "scrollToIndex", "scrollToEnd", "getContentSize"],
     screen: JumpToMessageDemo,
+  },
+  {
+    id: "horizontal-rail",
+    title: "Горизонтальная ось",
+    description:
+      "Лента карточек: подгрузка слева и справа, компенсация позиции и замер по ширине",
+    covers: ["horizontal", "maintainVisibleContentPosition", "onStartReached"],
+    screen: HorizontalRailDemo,
+  },
+  {
+    id: "horizontal-sticky",
+    title: "Прилипание по горизонтали",
+    description:
+      "Месяцы у левой кромки, метки групп у правой — те же два режима, другая ось",
+    covers: ["horizontal", "sticky", "renderOverlay", "stickyOffset"],
+    screen: HorizontalStickyDemo,
   },
   {
     id: "throughput",

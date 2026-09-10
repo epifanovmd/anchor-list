@@ -37,6 +37,13 @@ export interface IInsetEndOptions {
   contentSize: SharedValue<number>;
   /** Тот же `ScrollView`, что и у списка: сдвиг идёт на UI-потоке. */
   scrollRef: AnimatedRef<Animated.ScrollView>;
+  /**
+   * Ось списка: смещение уходит в `scrollTo` первым аргументом, а не вторым.
+   *
+   * Примитивом в замыкании: обе реакции ниже — worklet-ы, и выбирать ось внутри
+   * них можно только по значению, которое не меняется за жизнь списка.
+   */
+  horizontal: boolean;
   /** Смещение скролла на UI-потоке. */
   scrollOffset: SharedValue<number>;
   /** Палец на экране и инерция после броска: тогда позицией управляет жест. */
@@ -51,11 +58,11 @@ export interface IInsetEndOptions {
   revealed: SharedValue<boolean>;
 }
 
-/** Низ списка на UI-потоке. */
+/** Конечная кромка списка на UI-потоке. */
 export interface IInsetEnd {
-  /** Сдвиг слоя контейнеров вниз: прижимает короткий контент к концу. */
+  /** Сдвиг слоя контейнеров к концу оси: прижимает короткий контент к концу. */
   alignOffset: SharedValue<number>;
-  /** Высота распорки в конце контента: отступ плюс запас на ход раскладки. */
+  /** Длина распорки в конце контента: отступ плюс запас на ход раскладки. */
   spacer: SharedValue<number>;
 }
 
@@ -85,6 +92,7 @@ export const useInsetEnd = ({
   scrollLength,
   contentSize,
   scrollRef,
+  horizontal,
   scrollOffset,
   isDragging,
   isMomentum,
@@ -198,7 +206,8 @@ export const useInsetEnd = ({
 
       if (!pending.value) return;
 
-      scrollTo(scrollRef, 0, layout.scroll, false);
+      if (horizontal) scrollTo(scrollRef, layout.scroll, 0, false);
+      else scrollTo(scrollRef, 0, layout.scroll, false);
     },
   );
 
@@ -247,7 +256,8 @@ export const useInsetEnd = ({
       // обрезал в тот раз, и это лишний вызов на каждый кадр клавиатуры.
       if (!applied) return;
 
-      scrollTo(scrollRef, 0, desiredScroll.value, false);
+      if (horizontal) scrollTo(scrollRef, desiredScroll.value, 0, false);
+      else scrollTo(scrollRef, 0, desiredScroll.value, false);
     },
   );
 

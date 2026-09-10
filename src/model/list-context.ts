@@ -47,6 +47,15 @@ export interface IAnchorListContextValue {
   sticky: IAnchorListStickyConfig[];
   /** Якоря, уже отрисованные слоем прилипших копий. */
   stickyPinned: IAnchorListStickyPinnedIndices;
+  /**
+   * Ось списка: строки идут слева направо.
+   *
+   * Контекстом, а не пропом: ось нужна слотам строк, замеру ячеек, обоим слоям
+   * прилипания и всем распоркам — это четыре уровня вложенности, и протаскивать
+   * через них значение, которое за жизнь списка не меняется, значит добавить
+   * проп каждому промежуточному компоненту.
+   */
+  horizontal: boolean;
 }
 
 /**
@@ -95,3 +104,6 @@ export const useListSticky = (): IAnchorListStickyConfig[] =>
 /** Якоря, уже отрисованные слоем прилипших копий; см. {@link IAnchorListStickyPinnedIndices}. */
 export const useListStickyPinned = (): IAnchorListStickyPinnedIndices =>
   useListContext().stickyPinned;
+
+/** Ось списка: строки идут слева направо, а не сверху вниз. */
+export const useListHorizontal = (): boolean => useListContext().horizontal;

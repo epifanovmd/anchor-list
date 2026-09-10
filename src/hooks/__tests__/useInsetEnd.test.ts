@@ -50,7 +50,9 @@ const CONTENT = 20000;
 /** Домашний индикатор: столько прибавляется к отступу вторым кадром. */
 const HOME_INDICATOR = 34;
 
-const setup = (options: { inset?: number; revealed?: boolean } = {}) => {
+const setup = (
+  options: { inset?: number; revealed?: boolean; horizontal?: boolean } = {},
+) => {
   mockReactions.length = 0;
   mockScrollTo.mockClear();
 
@@ -70,6 +72,7 @@ const setup = (options: { inset?: number; revealed?: boolean } = {}) => {
       scrollLength: sharedValue(VIEWPORT),
       contentSize: sharedValue(CONTENT),
       scrollRef: {} as AnimatedRef<Animated.ScrollView>,
+      horizontal: options.horizontal ?? false,
       scrollOffset,
       isDragging: sharedValue(false),
       isMomentum: sharedValue(false),
@@ -154,6 +157,21 @@ describe("useInsetEnd", () => {
     frame();
 
     expect(mockScrollTo).toHaveBeenCalledWith({}, 0, HOME_INDICATOR, false);
+  });
+
+  it("в горизонтальном списке смещение уходит в X", () => {
+    // `scrollTo` принимает обе координаты, и промах здесь не ошибка типов:
+    // список молча увёз бы поперечную ось вместо оси скролла, а отступ
+    // остался бы неучтённым.
+    const { insetEnd, revealed, frame } = setup({ horizontal: true });
+
+    revealed.value = true;
+    frame();
+
+    insetEnd.value = HOME_INDICATOR;
+    frame();
+
+    expect(mockScrollTo).toHaveBeenCalledWith({}, HOME_INDICATOR, 0, false);
   });
 
   it("после показа считает отступ от того, каким он стал за время ожидания", () => {

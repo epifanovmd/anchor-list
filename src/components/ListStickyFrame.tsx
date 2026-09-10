@@ -1,5 +1,4 @@
 import React, { memo, ReactNode, useMemo } from "react";
-import { StyleSheet } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 import Animated, {
   useAnimatedStyle,
@@ -16,11 +15,13 @@ import {
 import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
+  useListHorizontal,
   useListScrollOffset,
   useListSticky,
   useListStickyPinned,
 } from "../model";
 import type { AnchorListStickyEdge } from "../types";
+import { getAxisSlotStyle, getAxisTranslate } from "./axis";
 import {
   isContainerParked,
   resolveStickyPlacement,
@@ -74,6 +75,7 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
     children,
   }) => {
     const scrollOffset = useListScrollOffset();
+    const horizontal = useListHorizontal();
     // Позиция строки приходит из раскладки, смещение скролла — нативное:
     // расходятся они на высоту шапки, и переводит одно в другое эта величина.
     const contentOrigin = useListSignal("contentOrigin") ?? 0;
@@ -128,11 +130,11 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
         // контентом, стоит у кромки, или его выталкивает следующий. Считаются
         // они от разных кромок, поэтому и формула у каждой своя.
         const shiftOfEdge = edgeOffset?.value ?? 0;
-        const viewportTop = scrollOffset.value - contentOrigin;
+        const viewportStart = scrollOffset.value - contentOrigin;
         const edgePosition =
           edge === "start"
-            ? viewportTop + shiftOfEdge
-            : viewportTop + scrollLength - shiftOfEdge;
+            ? viewportStart + shiftOfEdge
+            : viewportStart + scrollLength - shiftOfEdge;
 
         const free =
           edge === "start"
@@ -221,16 +223,21 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
 
     const animatedStyle = useAnimatedStyle(() => ({
       opacity: mode === "container" && pinnedByOverlay.value ? 0 : 1,
-      transform: [{ translateY: mode === "container" ? offset.value : 0 }],
+      transform: getAxisTranslate(
+        mode === "container" ? offset.value : 0,
+        horizontal,
+      ),
     }));
     const style = useMemo(
       () => [
-        styles.container,
-        { top: position },
-        clipped ? { height: size, overflow: "hidden" as const } : null,
+        getAxisSlotStyle({
+          position,
+          clipSize: clipped ? size : undefined,
+          horizontal,
+        }),
         { zIndex: STICKY_Z_INDEX[edge] },
       ],
-      [position, size, clipped, edge],
+      [position, size, clipped, edge, horizontal],
     );
 
     return (
@@ -242,11 +249,3 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
 );
 
 ListStickyFrame.displayName = "ListStickyFrame";
-
-const styles = StyleSheet.create({
-  container: {
-    left: 0,
-    position: "absolute",
-    right: 0,
-  },
-});
