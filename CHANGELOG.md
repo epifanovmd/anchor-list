@@ -1,5 +1,20 @@
 # Changelog
 
+# [2.1.0](https://github.com/epifanovmd/anchor-list/compare/v2.0.0...v2.1.0) (2026-09-10)
+
+
+### Bug Fixes
+
+* **deps:** lock-файл обновлён под новые peer-диапазоны ([96bcf2e](https://github.com/epifanovmd/anchor-list/commit/96bcf2e552342f82d366e4b5dd85b288143687d4))
+* **deps:** react и react-native ограничены версиями с новой архитектурой ([3d3c231](https://github.com/epifanovmd/anchor-list/commit/3d3c231ca7444592e2e93582df20ba2a69e4caec))
+* **sticky:** прилипшая копия не получала размер поперёк оси ([8d7a70b](https://github.com/epifanovmd/anchor-list/commit/8d7a70bb4ec8d93cbaacb145cec361a3f04e68dd))
+* горизонтальные строки не получали высоту вьюпорта ([2b3ff1e](https://github.com/epifanovmd/anchor-list/commit/2b3ff1e52804024e665a9a032709013dfa19b76b))
+
+
+### Features
+
+* горизонтальная ось списка (`horizontal`) ([5f0a360](https://github.com/epifanovmd/anchor-list/commit/5f0a360c023eb4876810e0d990d503b937c02d7c))
+
 # [2.0.0](https://github.com/epifanovmd/anchor-list/compare/v1.0.1...v2.0.0) (2026-08-30)
 
 
