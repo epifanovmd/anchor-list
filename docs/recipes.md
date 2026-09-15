@@ -11,6 +11,7 @@
 - [Кнопка «вниз»](#кнопка-вниз)
 - [Переход к цитате](#переход-к-цитате)
 - [Индикатор прокрутки](#индикатор-прокрутки)
+- [Живое число без рендеров](#живое-число-без-рендеров)
 - [Отметка о прочтении](#отметка-о-прочтении)
 
 ---
@@ -351,6 +352,48 @@ const progressStyle = useAnimatedStyle(() => ({
 
 ---
 
+## Живое число без рендеров
+
+Скорость, смещение или расстояние до кромки на экране, обновляемые каждый кадр.
+Текст в смонтированный узел пишется через `animatedProps` нередактируемого
+`TextInput`:
+
+```tsx
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+const LiveNumber = ({ value }: { value: SharedValue<number> }) => {
+  const animatedProps = useAnimatedProps(() => {
+    const text = value.value.toFixed(2);
+
+    // `defaultValue` — для первого кадра: он ставится до того, как маппер
+    // впервые запишет `text`.
+    return { text, defaultValue: text } as Partial<TextInputProps>;
+  });
+
+  return (
+    <AnimatedTextInput
+      editable={false}
+      value={undefined}
+      animatedProps={animatedProps}
+      style={{ fontVariant: ["tabular-nums"] }}
+    />
+  );
+};
+```
+
+```tsx
+const velocity = useSharedValue(0);
+
+<AnchorList sharedValues={useMemo(() => ({ velocity }), [velocity])} />;
+<LiveNumber value={velocity} />;
+```
+
+`fontVariant: ["tabular-nums"]` держит одинаковую ширину цифр, чтобы текст не
+дрожал. Готовый компонент —
+[`example/src/ui/LiveNumber.tsx`](../example/src/ui/LiveNumber.tsx).
+
+---
+
 ## Отметка о прочтении
 
 ```tsx
@@ -383,5 +426,5 @@ const viewabilityPairs = useMemo<IAnchorListViewabilityPair<ChatRow>[]>(
 
 ## Дальше
 
-- [`example/`](../example) — десять работающих стендов
+- [`example/`](../example) — стенды на устройстве, по одному на механику
 - [Симптомы](troubleshooting.md) — если что-то из этого повело себя не так

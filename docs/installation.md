@@ -10,19 +10,14 @@ npm install @epifanovmd/anchor-list
 
 ## Зависимости
 
-Список объявляет четыре peer-зависимости.
+Список объявляет четыре peer-зависимости:
 
 | Пакет | Версия | Зачем |
 | --- | --- | --- |
 | `react` | `>=19.0.0` | Версия, с которой идёт React Native 0.78 |
 | `react-native` | `>=0.78.0` | Минимум для Reanimated 4 |
-| `react-native-reanimated` | `>=4.0.0` | Смещение скролла и прилипание считаются на UI-потоке |
-| `react-native-worklets` | `>=0.5.0` | Runtime worklet-функций; `scheduleOnRN` для перехода в JS |
-
-**Нужна новая архитектура.** Reanimated 4 работает только на ней, поэтому на
-старой архитектуре список не запустится. В RN 0.78 и новее она включена по
-умолчанию; выключенная (`newArchEnabled=false`, `RCT_NEW_ARCH_ENABLED=0`) не
-подходит.
+| `react-native-reanimated` | `>=4.0.0` | Смещение скролла, прилипание и отступы считаются на UI-потоке |
+| `react-native-worklets` | `>=0.5.0` | Runtime worklet-функций |
 
 ```sh
 yarn add react-native-reanimated react-native-worklets
@@ -30,19 +25,19 @@ cd ios && pod install
 ```
 
 Reanimated 4 требует `react-native-worklets` совместимой версии — таблица
-совместимости есть в документации самого Reanimated.
+совместимости есть в документации Reanimated.
 
-Проверить, что приложение идёт на новой архитектуре, можно по логам Metro:
+**Нужна новая архитектура.** Reanimated 4 работает только на ней, поэтому на
+старой архитектуре список не запустится. В React Native 0.78 и новее она
+включена по умолчанию. Проверить можно по логу Metro при запуске:
 
 ```sh
 Running "App" with {"fabric":true,"initialProps":{"concurrentRoot":true},"rootTag":1}
 ```
 
-### Почему Reanimated обязателен
-
-Смещение скролла попадает в shared value синхронно с нативным скроллом:
-обработчик скролла — worklet, а не JS-колбэк. На этом смещении держатся
-`sharedValues`, смещение прилипающих элементов и слой прилипших копий.
+Без Reanimated список не работает, а не просто теряет анимации: обработчик
+скролла — worklet, и на его смещении держатся `sharedValues`, прилипание и
+подъём контента под клавиатуру.
 
 ## Настройка babel
 
@@ -60,7 +55,7 @@ module.exports = {
 ```
 
 Плагин должен обрабатывать и код библиотеки: в нём есть функции с директивой
-`"worklet"`. Metro по умолчанию применяет babel-конфиг проекта в том числе к
+`"worklet"`. Metro по умолчанию применяет babel-конфиг проекта и к
 `node_modules`. Если в проекте `node_modules` исключены из трансформации,
 исключение нужно снять для этого пакета.
 
@@ -71,10 +66,10 @@ module.exports = {
 | Симптом | Причина |
 | --- | --- |
 | `Tried to synchronously call a non-worklet function on the UI thread` | Плагин worklets не применён к коду библиотеки |
-| Reanimated падает при старте, в логах Metro `"fabric":false` | Выключена новая архитектура |
-| Прилипающие заголовки не двигаются | То же — worklet не собрался, смещение всегда 0 |
+| Reanimated падает при старте, в логе Metro `"fabric":false` | Выключена новая архитектура |
+| Прилипающие заголовки не двигаются | То же: worklet не собрался, смещение всегда 0 |
 | `Reanimated 4 requires react-native-worklets` | `react-native-worklets` не установлен |
-| Список пустой, ошибок нет | Скорее всего дело не в установке — см. [Диагностика](troubleshooting.md) |
+| Список пустой, ошибок нет | Скорее всего дело не в установке — см. [Симптомы](troubleshooting.md#список-пустой) |
 
 Минимальная проверка после установки:
 
@@ -107,17 +102,14 @@ export const Smoke = () => (
 | --- | --- |
 | iOS | Поддерживается |
 | Android | Поддерживается |
-| Web (`react-native-web`) | ⚠️ **Не готов.** Требует доработок, использовать нельзя |
+| Web (`react-native-web`) | Не работает |
 
-Нативного кода в пакете нет — только JavaScript и типы, поэтому линковка не
-нужна, а Expo Go работает, если в проекте уже есть Reanimated.
+Нативного кода в пакете нет — только JavaScript и типы. Линковка не нужна, Expo
+Go работает, если в проекте уже есть Reanimated.
 
-### Про web
-
-Бандл примера собирается, список в браузере не работает. Удержание видимой
-позиции выполняет нативный `ScrollView` через свой
-`maintainVisibleContentPosition`, а `react-native-web` этого свойства не
-реализует. CI web не проверяет.
+Про web: бандл собирается, но список в браузере не работает. Удержание видимой
+позиции выполняет нативный `ScrollView` через `maintainVisibleContentPosition`,
+а `react-native-web` этого свойства не реализует.
 
 ## Импорт
 
@@ -128,6 +120,7 @@ import {
   AnchorList,
   useAnchorListState,
   useAnchorListValue,
+  useAnchorListItemState,
   anchorListPerf,
   useAnchorListPerf,
   anchorListDebug,

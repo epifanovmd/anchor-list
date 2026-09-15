@@ -56,7 +56,7 @@ Running "AnchorListExample" with {"fabric":true,"initialProps":{"concurrentRoot"
 Note the `"fabric":true` and `"concurrentRoot":true` properties.
 
 There is also a Web target, but **it is not working yet** — see
-[limitations](./docs/limitations.md#web-требует-доработок). The bundle builds, so
+[limitations](./docs/limitations.md#чего-нет). The bundle builds, so
 the command is still useful for catching build breakage, but nothing checks it
 automatically, and the list itself does not work in a browser: position keeping
 relies on the native `maintainVisibleContentPosition`, which `react-native-web`

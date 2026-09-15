@@ -200,70 +200,16 @@ const totalSize = useAnchorListValue(listState, "totalSize");
 
 ## Что выбрать
 
-**Кнопка «вниз».** `sharedValues.isWithinMaintainScrollAtEndThreshold`:
-
-```tsx
-const isAtEnd = useSharedValue(true);
-
-const style = useAnimatedStyle(() => ({
-  opacity: withTiming(isAtEnd.value ? 0 : 1),
-  pointerEvents: isAtEnd.value ? "none" : "auto",
-}));
-
-<AnchorList
-  sharedValues={useMemo(
-    () => ({ isWithinMaintainScrollAtEndThreshold: isAtEnd }),
-    [isAtEnd],
-  )}
-/>;
-```
-
-**Счётчик непрочитанных в шапке.** `state`: значение идёт в текст.
-
-**Тень под навбаром.** `sharedValues.distanceFromStart`: величина непрерывная.
-
-**Спиннер до готовности списка.** `state` + `readyToRender`.
-
-## Число с UI-потока, без рендеров
-
-Текст в смонтированный узел пишется через `animatedProps` нередактируемого
-`TextInput`:
-
-```tsx
-const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
-
-const LiveNumber = ({ value }: { value: SharedValue<number> }) => {
-  const animatedProps = useAnimatedProps(() => {
-    const text = value.value.toFixed(2);
-
-    // `defaultValue` — для первого кадра: он ставится до того, как маппер
-    // впервые запишет `text`.
-    return { text, defaultValue: text } as Partial<TextInputProps>;
-  });
-
-  return (
-    <AnimatedTextInput
-      editable={false}
-      value={undefined}
-      animatedProps={animatedProps}
-      style={{ fontVariant: ["tabular-nums"] }}
-    />
-  );
-};
-```
-
-```tsx
-const velocity = useSharedValue(0);
-
-<AnchorList sharedValues={useMemo(() => ({ velocity }), [velocity])} />;
-<LiveNumber value={velocity} />;
-```
-
-`fontVariant: ["tabular-nums"]` держит одинаковую ширину цифр.
-
-Готовый компонент — [`example/src/ui/LiveNumber.tsx`](../example/src/ui/LiveNumber.tsx).
+| Задача | Откуда брать | Почему |
+| --- | --- | --- |
+| Кнопка «вниз» | `sharedValues.isWithinMaintainScrollAtEndThreshold` | Видимость меняется на скролле, рендер не нужен — [рецепт](recipes.md#кнопка-вниз) |
+| Тень под навбаром | `sharedValues.distanceFromStart` | Величина непрерывная, идёт в `opacity` |
+| Индикатор прокрутки | `sharedValues.scrollOffset` и `maxScroll` | Каждый кадр — [рецепт](recipes.md#индикатор-прокрутки) |
+| Число на экране без рендеров | `sharedValues` + `animatedProps` | [Рецепт](recipes.md#живое-число-без-рендеров) |
+| Счётчик непрочитанных в шапке | `state` | Значение идёт в текст, меняется редко |
+| Спиннер до готовности списка | `state` + `readyToRender` | Флаг в разметке |
 
 ## Дальше
 
 - [Видимость элементов](viewability.md) — пороги видимости вместо «что на экране»
-- [Отступы и клавиатура](insets.md) — пример анимации по shared values
+- [Рецепты](recipes.md) — законченные примеры на shared values

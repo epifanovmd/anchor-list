@@ -220,29 +220,9 @@ const state = useAnchorListState();
 const firstVisible = useAnchorListValue(state, "firstVisibleIndex");
 ```
 
-## Полный пример: сохранение и восстановление позиции
+## Пример: снимок позиции для восстановления
 
-```tsx
-const savePosition = useCallback(() => {
-  const list = listRef.current;
-
-  if (!list) return;
-
-  const topIndex = list.getVisibleRange().start;
-  const position = list.getPositionAtIndex(topIndex);
-  const row = data[topIndex];
-
-  if (position === undefined || !row) return;
-
-  // Смещение со знаком: отрицательное означает, что строка уходит за кромку —
-  // именно оно возвращает её ровно тем же куском, каким она была.
-  storage.write({
-    key: keyExtractor(row),
-    offset: position - list.getScrollOffset(),
-  });
-}, [data]);
-```
-
-Восстанавливается это пропом `initialScroll`, а не методом ref: скролл нужен к
-первому кадру — см.
-[Скролл и позиционирование](scrolling.md#стартовая-позиция).
+`getVisibleRange`, `getPositionAtIndex` и `getScrollOffset` вместе дают ключ
+верхней строки и её смещение относительно кромки. Восстанавливается позиция
+пропом `initialScroll`, а не методом ref: скролл нужен к первому кадру. Полный
+код — [Рецепты](recipes.md#восстановление-позиции).
