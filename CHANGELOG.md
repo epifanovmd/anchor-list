@@ -1,5 +1,22 @@
 # Changelog
 
+# [2.2.0](https://github.com/epifanovmd/anchor-list/compare/v2.1.0...v2.2.0) (2026-09-20)
+
+
+### Bug Fixes
+
+* **example:** подсветка и затухание рисуются на пузыре, а не на слоте строки ([9456b2b](https://github.com/epifanovmd/anchor-list/commit/9456b2b501b6fd013ddc268e5178aa130df30c27))
+* **sticky:** копия якоря в слое не отдавала хукам геометрию строки ([99f0e22](https://github.com/epifanovmd/anchor-list/commit/99f0e22d88a89411f5d54ad60c02d185354fa827))
+
+
+### Features
+
+* **layout:** зазор между строками на уровне списка — gap и getItemGap ([dc3ca6f](https://github.com/epifanovmd/anchor-list/commit/dc3ca6f03b14af5ac1fc03f30fa12573c8eddd97))
+* **rendering:** кэш измерений sizeCache, переживающий размонтирование ([7895abf](https://github.com/epifanovmd/anchor-list/commit/7895abfc86738de90c2f9bafa5eb86dfc6a44f3c))
+* **scroll:** подсветка строки после перехода к ней ([de133c0](https://github.com/epifanovmd/anchor-list/commit/de133c0269bf05f1070ed7094b4e8236fe801fce))
+* **scroll:** стартовая позиция по ключу и снимок позиции getScrollAnchor ([af48d7c](https://github.com/epifanovmd/anchor-list/commit/af48d7cb909ed68b684bb1a857b6c4f5bf45afc8))
+* **viewability:** видимость строки как shared value на UI-потоке ([e56b2bc](https://github.com/epifanovmd/anchor-list/commit/e56b2bc311528847c2528a0c6b68ab4e87309e4b))
+
 # [2.1.0](https://github.com/epifanovmd/anchor-list/compare/v2.0.0...v2.1.0) (2026-09-10)
 
 
