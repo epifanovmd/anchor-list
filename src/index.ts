@@ -14,6 +14,7 @@
 export { AnchorList } from "./components";
 export {
   useAnchorListItemState,
+  useAnchorListItemVisibility,
   useAnchorListState,
   useAnchorListValue,
 } from "./hooks";

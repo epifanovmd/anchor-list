@@ -6,6 +6,7 @@ export * from "./EndlessFeedDemo";
 export * from "./HoldPositionDemo";
 export * from "./HorizontalRailDemo";
 export * from "./HorizontalStickyDemo";
+export * from "./ItemVisibilityDemo";
 export * from "./JumpToMessageDemo";
 export * from "./LiveStateDemo";
 export * from "./PinnedAnchorsDemo";

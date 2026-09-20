@@ -5,6 +5,7 @@ import { EndlessFeedDemo } from "./EndlessFeedDemo";
 import { HoldPositionDemo } from "./HoldPositionDemo";
 import { HorizontalRailDemo } from "./HorizontalRailDemo";
 import { HorizontalStickyDemo } from "./HorizontalStickyDemo";
+import { ItemVisibilityDemo } from "./ItemVisibilityDemo";
 import { JumpToMessageDemo } from "./JumpToMessageDemo";
 import { LiveStateDemo } from "./LiveStateDemo";
 import { PinnedAnchorsDemo } from "./PinnedAnchorsDemo";
@@ -21,6 +22,7 @@ export type DemoId =
   | "composer-inset"
   | "pinned-anchors"
   | "live-state"
+  | "item-visibility"
   | "jump-to-message"
   | "horizontal-rail"
   | "horizontal-sticky"
@@ -97,6 +99,14 @@ export const DEMOS: IDemoEntry[] = [
     description: "UI-поток без рендеров рядом с подпиской из React",
     covers: ["sharedValues", "state", "viewabilityPairs"],
     screen: LiveStateDemo,
+  },
+  {
+    id: "item-visibility",
+    title: "Видимость строки",
+    description:
+      "Доля строки во вьюпорте на UI-потоке: затухание у кромок, панель снизу, прилипший заголовок",
+    covers: ["useAnchorListItemVisibility", "insetEnd", "sticky"],
+    screen: ItemVisibilityDemo,
   },
   {
     id: "jump-to-message",

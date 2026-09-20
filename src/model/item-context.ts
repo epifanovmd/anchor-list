@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { SharedValue } from "react-native-reanimated";
 
 /**
  * Ключ элемента, который контейнер рисует прямо сейчас.
@@ -23,3 +24,37 @@ export const ListItemKeyProvider = ItemKeyContext.Provider;
 
 /** Ключ элемента текущей ячейки; null — узел отрисован вне ячейки списка. */
 export const useListItemKey = (): string | null => useContext(ItemKeyContext);
+
+/**
+ * Где контейнер положил свою строку.
+ *
+ * Зачем нужен: видимость строки считается на UI-потоке из её позиции и
+ * размера, а те известны контейнеру, не ячейке. Контекстом, а не полем
+ * `renderItem`: хук вызывают в глубине строки, и прокидывать геометрию через
+ * каждый слой пришлось бы вручную.
+ *
+ * Значение меняется вместе с позицией — то есть на перепривязке и на
+ * изменениях раскладки выше строки, но не на скролле: скролл двигает
+ * `contentOffset`, а не позиции. Поэтому потребители контекста
+ * перерисовываются редко, а покадровая часть живёт в worklet.
+ */
+export interface IAnchorListItemFrame {
+  /** Позиция строки в координатах элементов. */
+  position: number;
+  size: number;
+  /**
+   * Сдвиг строки трансформом относительно её позиции: прилипший якорь в
+   * режиме `container` стоит не там, где лежит. `undefined` — строка не
+   * сдвигается.
+   */
+  shift: SharedValue<number> | undefined;
+}
+
+const ItemFrameContext = createContext<IAnchorListItemFrame | null>(null);
+
+/** Раздаёт поддереву ячейки геометрию её строки. */
+export const ListItemFrameProvider = ItemFrameContext.Provider;
+
+/** Геометрия строки текущей ячейки; null — узел отрисован вне ячейки. */
+export const useListItemFrame = (): IAnchorListItemFrame | null =>
+  useContext(ItemFrameContext);

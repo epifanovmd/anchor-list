@@ -35,6 +35,24 @@ export interface IAnchorListStickyGeometry {
   limit: number | undefined;
 }
 
+/**
+ * Геометрия списка на UI-потоке — для worklet-расчётов внутри ячеек.
+ *
+ * Те же значения, что список держит для расчёта кромок: у покадрового расчёта
+ * должен быть один источник на всех, иначе видимость строки и расстояние до
+ * кромки разойдутся на кадр.
+ */
+export interface IAnchorListLayoutValues {
+  /** Размер вьюпорта вдоль оси скролла. */
+  scrollLength: SharedValue<number>;
+  /** Начало координат элементов внутри контента: шапка списка. */
+  contentOrigin: SharedValue<number>;
+  /** Нижний отступ списка — проп `insetEnd`; undefined, если не задан. */
+  insetEnd: SharedValue<number> | undefined;
+  /** Сдвиг слоя контейнеров к концу: короткий контент прижат к концу оси. */
+  alignOffset: SharedValue<number>;
+}
+
 /** Всё, что список отдаёт своему дереву. */
 export interface IAnchorListContextValue {
   /** Адресные сигналы: через них ядро говорит с контейнерами. */
@@ -43,6 +61,8 @@ export interface IAnchorListContextValue {
   runtime: IAnchorListRuntimeHandle;
   /** Смещение скролла на UI-потоке — прилипание считается из него. */
   scrollOffset: SharedValue<number>;
+  /** Геометрия списка на UI-потоке; см. {@link IAnchorListLayoutValues}. */
+  layout: IAnchorListLayoutValues;
   /** Наборы прилипающих элементов, объявленные списком. */
   sticky: IAnchorListStickyConfig[];
   /** Якоря, уже отрисованные слоем прилипших копий. */
@@ -96,6 +116,10 @@ export const useListRuntime = (): IAnchorListRuntimeHandle =>
 /** Смещение скролла на UI-потоке. */
 export const useListScrollOffset = (): SharedValue<number> =>
   useListContext().scrollOffset;
+
+/** Геометрия списка на UI-потоке. */
+export const useListLayoutValues = (): IAnchorListLayoutValues =>
+  useListContext().layout;
 
 /** Наборы прилипающих элементов, объявленные списком. */
 export const useListSticky = (): IAnchorListStickyConfig[] =>

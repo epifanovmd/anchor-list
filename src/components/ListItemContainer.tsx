@@ -3,6 +3,7 @@ import { View } from "react-native";
 
 import { useListSignals } from "../hooks";
 import {
+  ListItemFrameProvider,
   POSITION_OUT_OF_VIEW,
   useListHorizontal,
   useListRuntime,
@@ -58,6 +59,16 @@ export const ListItemContainer = memo<IAnchorListItemContainerProps>(
     const resolvedPosition = position ?? POSITION_OUT_OF_VIEW;
     const resolvedSize = itemSize ?? 0;
     const resolvedScrollLength = scrollLength ?? 0;
+    // Геометрия строки для хуков внутри ячейки. Обычная строка не сдвигается;
+    // у якоря сдвиг подставляет его рамка — она одна знает режим прилипания.
+    const frame = useMemo(
+      () => ({
+        position: resolvedPosition,
+        size: resolvedSize,
+        shift: undefined,
+      }),
+      [resolvedPosition, resolvedSize],
+    );
 
     if (itemKey === undefined || itemIndex === undefined) return null;
 
@@ -107,7 +118,9 @@ export const ListItemContainer = memo<IAnchorListItemContainerProps>(
 
     return (
       <View style={style}>
-        <ListItemContent key={contentKey} {...contentProps} />
+        <ListItemFrameProvider value={frame}>
+          <ListItemContent key={contentKey} {...contentProps} />
+        </ListItemFrameProvider>
       </View>
     );
   },

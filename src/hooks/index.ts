@@ -1,4 +1,5 @@
 export * from "./useAnchorListItemState";
+export * from "./useAnchorListItemVisibility";
 export * from "./useAnchorListState";
 export * from "./useEdgeSharedValues";
 export * from "./useInsetEnd";

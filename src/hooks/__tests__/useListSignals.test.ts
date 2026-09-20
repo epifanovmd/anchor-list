@@ -20,6 +20,12 @@ const createValue = (store: ListStore): IAnchorListContextValue => ({
     getStickyGeometry: () => undefined,
   },
   scrollOffset: { value: 0 } as SharedValue<number>,
+  layout: {
+    scrollLength: { value: 0 } as SharedValue<number>,
+    contentOrigin: { value: 0 } as SharedValue<number>,
+    insetEnd: undefined,
+    alignOffset: { value: 0 } as SharedValue<number>,
+  },
   horizontal: false,
   stickyPinned: {
     start: { value: -1 } as SharedValue<number>,

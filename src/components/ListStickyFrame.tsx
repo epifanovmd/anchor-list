@@ -15,6 +15,7 @@ import {
 import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
+  ListItemFrameProvider,
   useListHorizontal,
   useListScrollOffset,
   useListSticky,
@@ -240,9 +241,23 @@ export const ListStickyFrame = memo<IAnchorListStickyFrameProps>(
       [position, size, clipped, edge, horizontal],
     );
 
+    // В режиме `container` трансформом едет вся строка, и её видимость
+    // считается от сдвинутого места. В режиме `offset` строка стоит, едет
+    // объект внутри — сдвигать её геометрию нельзя.
+    const frame = useMemo(
+      () => ({
+        position,
+        size,
+        shift: mode === "container" ? offset : undefined,
+      }),
+      [position, size, mode, offset],
+    );
+
     return (
       <Animated.View style={[style, animatedStyle]}>
-        {children(offset, pinnedByOverlay)}
+        <ListItemFrameProvider value={frame}>
+          {children(offset, pinnedByOverlay)}
+        </ListItemFrameProvider>
       </Animated.View>
     );
   },

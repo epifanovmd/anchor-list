@@ -230,11 +230,26 @@ const AnchorListInner = <TItem,>(
     [runtime],
   );
 
+  /**
+   * Геометрия для worklet-расчётов в ячейках — те же shared values, что
+   * держат расчёт кромок: источник на всех один.
+   */
+  const layoutValues = useMemo(
+    () => ({
+      scrollLength: edgeScrollLength,
+      contentOrigin: edgeHeaderSize,
+      insetEnd,
+      alignOffset: insetEndLayout.alignOffset,
+    }),
+    [edgeScrollLength, edgeHeaderSize, insetEnd, insetEndLayout.alignOffset],
+  );
+
   const contextValue = useMemo(
     () => ({
       store,
       runtime,
       scrollOffset,
+      layout: layoutValues,
       sticky: stickyConfigs,
       stickyPinned: { start: pinnedStartIndex, end: pinnedEndIndex },
       horizontal,
@@ -243,6 +258,7 @@ const AnchorListInner = <TItem,>(
       store,
       runtime,
       scrollOffset,
+      layoutValues,
       stickyConfigs,
       pinnedStartIndex,
       pinnedEndIndex,
