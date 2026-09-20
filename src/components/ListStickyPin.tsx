@@ -1,10 +1,11 @@
 import React, { memo, useEffect, useMemo } from "react";
 import Animated, {
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
 } from "react-native-reanimated";
 
-import { isPinnedAtEdge } from "../core";
+import { getStickyOffset, isPinnedAtEdge } from "../core";
 import {
   formatDebugValues,
   logStickyPin,
@@ -13,7 +14,9 @@ import {
 import { debugClock, debugFlag, logFromWorklet } from "../debug/debug-worklet";
 import { useListSignal } from "../hooks";
 import {
+  ListItemFrameProvider,
   ListItemKeyProvider,
+  POSITION_OUT_OF_VIEW,
   useListHorizontal,
   useListRuntime,
   useListScrollOffset,
@@ -127,6 +130,35 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
       };
     });
 
+    /**
+     * Сдвиг копии относительно места якоря в раскладке — тот же, что у копии
+     * внутри контента. Нужен хукам в поддереве копии: видимость строки они
+     * считают от места, где строка нарисована, а копия нарисована у кромки.
+     */
+    const shift = useDerivedValue(() =>
+      geometry === undefined
+        ? 0
+        : getStickyOffset({
+            edge,
+            position: geometry.position,
+            size: geometry.size,
+            scrollLength,
+            scroll: scrollOffset.value,
+            contentOrigin,
+            edgeOffset: edgeOffset?.value ?? 0,
+            limit: geometry.limit,
+            stickySize,
+          }),
+    );
+    const frame = useMemo(
+      () => ({
+        position: geometry?.position ?? POSITION_OUT_OF_VIEW,
+        size: geometry?.size ?? 0,
+        shift,
+      }),
+      [geometry, shift],
+    );
+
     const content = resolveOverlayRenderer(config, renderItem);
     const rendered =
       content !== undefined && geometry !== undefined ? index : -1;
@@ -169,7 +201,9 @@ export const ListStickyPin = memo<IAnchorListStickyPinProps>(
           // причине, что и строке внутри контента: якорь меняется на ходу, а
           // узел остаётся тем же.
           <ListItemKeyProvider value={itemKey}>
-            {content({ item, index, itemKey, type: "", extraData })}
+            <ListItemFrameProvider value={frame}>
+              {content({ item, index, itemKey, type: "", extraData })}
+            </ListItemFrameProvider>
           </ListItemKeyProvider>
         ) : null}
       </Animated.View>
