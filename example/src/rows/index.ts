@@ -1,6 +1,7 @@
 export * from "./ChatRow";
 export * from "./FadingChatRow";
 export * from "./GroupAvatar";
+export * from "./HighlightedChatRow";
 export * from "./JumpToEndButton";
 export * from "./PinnedAvatar";
 export * from "./PinnedRailTag";

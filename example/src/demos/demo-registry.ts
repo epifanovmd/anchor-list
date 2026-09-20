@@ -111,8 +111,14 @@ export const DEMOS: IDemoEntry[] = [
   {
     id: "jump-to-message",
     title: "Переход к сообщению",
-    description: "Скролл по ключу, индексу и к концу контента; опрос геометрии",
-    covers: ["scrollToKey", "scrollToIndex", "scrollToEnd", "getContentSize"],
+    description:
+      "Скролл по ключу, индексу и к концу контента с подсветкой цели; опрос геометрии",
+    covers: [
+      "scrollToKey",
+      "highlight",
+      "highlightKey",
+      "useAnchorListItemHighlight",
+    ],
     screen: JumpToMessageDemo,
   },
   {

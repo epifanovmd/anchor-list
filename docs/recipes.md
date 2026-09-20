@@ -296,12 +296,14 @@ const anchoredEndSpace = useMemo<IAnchorListAnchoredEndSpace | undefined>(
 const jumpTo = useCallback(async (key: string) => {
   setQuotedKey(key);
 
-  // Ключ переживает вставки и удаления, индекс — нет.
+  // Ключ переживает вставки и удаления, индекс — нет. Подсветка загорится,
+  // когда цитата доедет до кадра, — как её рисовать, решает строка.
   const found = listRef.current?.scrollToKey({
     key,
     viewPosition: 0,
     viewOffset: 12,
     animated: true,
+    highlight: true,
   });
 
   // Сообщения нет в загруженном окне — сначала подтянуть контекст вокруг него.
@@ -309,6 +311,16 @@ const jumpTo = useCallback(async (key: string) => {
 }, []);
 
 <AnchorList ref={listRef} anchoredEndSpace={anchoredEndSpace} ... />;
+
+// Строка: подсветка фоном, на UI-потоке.
+const MessageRow = ({ row }: { row: ChatRow }) => {
+  const { progress } = useAnchorListItemHighlight();
+  const style = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [BASE, ACCENT]),
+  }));
+
+  return <Animated.View style={style}>…</Animated.View>;
+};
 ```
 
 ---

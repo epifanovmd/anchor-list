@@ -39,10 +39,10 @@
 | `scrollToIndex({ index, animated, viewPosition, viewOffset })` | Так же |
 | `scrollToOffset({ offset, animated })` | Так же |
 | `scrollToEnd({ animated })` | Так же |
-| `scrollToItem` | `scrollToKey({ key, ... })` — адресация ключом, а не поиском по элементу |
+| `scrollToItem` | `scrollToKey({ key, ... })` — адресация ключом, а не поиском по элементу; `highlight: true` подсветит цель |
 | `flashScrollIndicators` | — |
 | `recordInteraction` | — |
-| — | `getPositionAtIndex`, `getSizeAtIndex`, `getPositionByKey`, `getIndexByKey`, `getScrollAnchor`, `getVisibleRange`, `getScrollOffset`, `getContentSize`, `getScrollLength`, `getVelocity` |
+| — | `getPositionAtIndex`, `getSizeAtIndex`, `getPositionByKey`, `getIndexByKey`, `getScrollAnchor`, `highlightKey`, `clearHighlight`, `getVisibleRange`, `getScrollOffset`, `getContentSize`, `getScrollLength`, `getVelocity` |
 
 ### Что делать вместо `inverted`
 

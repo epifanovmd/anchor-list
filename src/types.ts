@@ -136,6 +136,31 @@ export interface IAnchorListAnchoredEndSpace {
   onSizeChanged?: (size: number) => void;
 }
 
+/** Подсветка строки после перехода к ней; см. {@link IAnchorListRef.scrollToKey}. */
+export interface IAnchorListHighlightOptions {
+  /**
+   * Сколько держать подсветку после появления, мс.
+   *
+   * @default 1200
+   */
+  duration?: number;
+  /**
+   * Плавность появления и угасания, мс.
+   *
+   * @default 200
+   */
+  fade?: number;
+}
+
+/**
+ * Просьба подсветить строку: `true` — с длительностями по умолчанию.
+ *
+ * Как подсветка выглядит, решает сама строка через
+ * `useAnchorListItemHighlight`: список отдаёт ей момент и длительности, а не
+ * стиль.
+ */
+export type AnchorListHighlight = boolean | IAnchorListHighlightOptions;
+
 /**
  * Стартовая позиция скролла.
  *
@@ -152,12 +177,16 @@ export type AnchorListInitialScroll =
       index: number;
       viewPosition?: number;
       viewOffset?: number;
+      /** Подсветить строку, когда список показан. */
+      highlight?: AnchorListHighlight;
     }
   | {
       type: "key";
       key: string;
       viewPosition?: number;
       viewOffset?: number;
+      /** Подсветить строку, когда список показан. */
+      highlight?: AnchorListHighlight;
     };
 
 /**
@@ -322,6 +351,14 @@ export interface IAnchorListRef {
     animated?: boolean;
     viewPosition?: number;
     viewOffset?: number;
+    /**
+     * Подсветить строку, когда она окажется на экране.
+     *
+     * Подсветка ждёт появления строки, а не момента вызова: на анимированном
+     * переезде она иначе угасла бы раньше, чем строка доехала. Как она
+     * выглядит, решает строка — `useAnchorListItemHighlight`.
+     */
+    highlight?: AnchorListHighlight;
   }) => void;
   /**
    * Скролл к элементу по ключу.
@@ -336,7 +373,21 @@ export interface IAnchorListRef {
     animated?: boolean;
     viewPosition?: number;
     viewOffset?: number;
+    /** Подсветить строку, когда она окажется на экране; см. `scrollToIndex`. */
+    highlight?: AnchorListHighlight;
   }) => boolean;
+  /**
+   * Подсветить строку без перехода к ней.
+   *
+   * Строка на экране загорается сразу, за кадром — когда доедет. Так
+   * отмечают ответ на своё сообщение, если он уже в кадре, или строку, к
+   * которой перешли своими средствами.
+   *
+   * @returns false, если элемента с таким ключом в данных нет.
+   */
+  highlightKey: (key: string, options?: IAnchorListHighlightOptions) => boolean;
+  /** Погасить горящую подсветку и забыть ожидающую. */
+  clearHighlight: () => void;
   scrollToOffset: (params: { offset: number; animated?: boolean }) => void;
   /** Скролл к концу контента — вместе с подвалом и распорками. */
   scrollToEnd: (params?: { animated?: boolean }) => void;

@@ -18,7 +18,11 @@ import {
 import type { IAnchorListStickyGeometry, IContainerRequest } from "../../model";
 import { ContainerPool, ListMetrics, ListStore } from "../../model";
 import { listPerf, perfNow } from "../../perf";
-import type { IAnchorListScrollAnchor } from "../../types";
+import type {
+  AnchorListHighlight,
+  IAnchorListHighlightOptions,
+  IAnchorListScrollAnchor,
+} from "../../types";
 import { ItemSource } from "../data";
 import type { IEdgeCheckContext, ListEdge } from "../edges";
 import { EdgeThresholds } from "../edges";
@@ -45,6 +49,7 @@ import {
   getItemScrollOffset,
   InitialOffsetResolver,
   InitialScroll,
+  ItemHighlight,
   MaintainScrollAtEnd,
   ProgrammaticScroll,
   resolveFreshOffset,
@@ -172,6 +177,7 @@ export class ListRuntime<TItem> {
   private readonly initialOffset: InitialOffsetResolver;
   private readonly initialScroll: InitialScroll;
   private readonly programmatic: ProgrammaticScroll;
+  private readonly highlight: ItemHighlight;
 
   private adapter: IScrollAdapter | undefined;
   /** Кромка, разблокированная текущим жестом. */
@@ -249,6 +255,11 @@ export class ListRuntime<TItem> {
     this.edges = new EdgeThresholds(this.edgeOptions());
     this.maintainAtEnd = new MaintainScrollAtEnd(this.maintainOptions());
     this.programmatic = new ProgrammaticScroll({ adapter });
+    this.highlight = new ItemHighlight({
+      store,
+      getIndexByKey: key => this.metrics.getIndexByKey(key),
+      getRange: () => this.range,
+    });
 
     this.mvcp = new MaintainVisibleContentPosition({
       store,
@@ -316,6 +327,7 @@ export class ListRuntime<TItem> {
       onFinished: () => {
         this.store.set("readyToRender", true);
         this.props.onLoad?.();
+        this.highlightInitialTarget();
       },
     });
     this.readiness = new RenderReadiness({
@@ -771,6 +783,8 @@ export class ListRuntime<TItem> {
     // Список взяли в руки: доводка к концу обязана уступить жесту.
     this.maintainAtEnd.cancel();
     this.programmatic.cancel();
+    // Цели переезда пользователь уже не увидит — подсвечивать её незачем.
+    this.highlight.cancel();
   }
 
   /** Жест завершён — следующий разблокирует кромку. */
@@ -856,6 +870,7 @@ export class ListRuntime<TItem> {
     animated?: boolean;
     viewPosition?: number;
     viewOffset?: number;
+    highlight?: AnchorListHighlight;
   }): boolean {
     const index = this.metrics.getIndexByKey(params.key);
 
@@ -869,12 +884,17 @@ export class ListRuntime<TItem> {
   /**
    * Скролл к элементу. `viewPosition` — куда прижать элемент во вьюпорте:
    * 0 к началу, 1 к концу, 0.5 по центру.
+   *
+   * `highlight` — подсветить элемент, когда он окажется в кадре: просьба
+   * ждёт события скролла, которое приведёт к нему диапазон, а уже видимый
+   * элемент загорается сразу.
    */
   scrollToIndex(params: {
     index: number;
     animated?: boolean;
     viewPosition?: number;
     viewOffset?: number;
+    highlight?: AnchorListHighlight;
   }): void {
     const { index, animated = false, viewPosition, viewOffset } = params;
 
@@ -891,6 +911,42 @@ export class ListRuntime<TItem> {
       }),
       animated,
     );
+
+    const key = this.items.getKey(index);
+
+    if (key !== undefined) this.highlight.request(key, params.highlight);
+  }
+
+  /**
+   * Подсветить строку без перехода; см. {@link ItemHighlight}.
+   *
+   * @returns false, если ключа нет в данных.
+   */
+  highlightKey(key: string, options?: IAnchorListHighlightOptions): boolean {
+    return this.highlight.request(key, options ?? true);
+  }
+
+  /** Погасить подсветку и забыть ожидающую. */
+  clearHighlight(): void {
+    this.highlight.clear();
+  }
+
+  /**
+   * Подсветка стартовой позиции — после показа списка.
+   *
+   * Раньше нельзя: пока список скрыт, подсветка сгорела бы невидимой. Сама
+   * просьба ждёт события скролла, которое приведёт диапазон к цели.
+   */
+  private highlightInitialTarget(): void {
+    const target = this.props.initialScroll;
+
+    if (target?.type !== "key" && target?.type !== "index") return;
+    if (!target.highlight) return;
+
+    const key =
+      target.type === "key" ? target.key : this.items.getKey(target.index);
+
+    if (key !== undefined) this.highlight.request(key, target.highlight);
   }
 
   /**
@@ -1031,6 +1087,8 @@ export class ListRuntime<TItem> {
     this.store.set("totalSize", this.metrics.getTotalSize());
     this.publishVisibleRange();
     this.publishGeometry();
+    // По итогу прохода: только теперь известно, доехала ли цель до кадра.
+    this.highlight.check();
 
     if (this.viewability.hasPairs()) {
       this.viewability.update({
@@ -1060,6 +1118,7 @@ export class ListRuntime<TItem> {
     this.readiness.dispose();
     this.initialScroll.dispose();
     this.programmatic.dispose();
+    this.highlight.dispose();
   }
 
   /**

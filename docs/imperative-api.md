@@ -29,6 +29,7 @@ scrollToIndex(params: {
   animated?: boolean;
   viewPosition?: number;
   viewOffset?: number;
+  highlight?: boolean | { duration?: number; fade?: number };
 }): void
 ```
 
@@ -40,6 +41,7 @@ scrollToIndex(params: {
 | `animated` | Доводить анимацией |
 | `viewPosition` | Куда прижать элемент во вьюпорте: `0` — к началу, `1` — к концу, `0.5` — по центру |
 | `viewOffset` | Поправка в пикселях поверх `viewPosition` |
+| `highlight` | Подсветить элемент, когда он окажется в кадре — см. [Подсветка](#подсветка) |
 
 ```tsx
 // Элемент встаёт у верхней кромки, на 12px ниже неё.
@@ -61,6 +63,7 @@ scrollToKey(params: {
   animated?: boolean;
   viewPosition?: number;
   viewOffset?: number;
+  highlight?: boolean | { duration?: number; fade?: number };
 }): boolean
 ```
 
@@ -99,6 +102,70 @@ scrollToEnd(params?: { animated?: boolean }): void
 
 Если измерения последних строк сдвинули границу, список повторяет доводку сам.
 Жест пользователя отменяет ожидающую доводку.
+
+---
+
+## Подсветка
+
+Переход к цитате без подсветки — прыжок, после которого пользователь ищет
+глазами, куда его привели. `highlight` у `scrollToIndex` и `scrollToKey`
+подсвечивает цель; как подсветка выглядит, решает сама строка.
+
+```tsx
+// Список: перейти и подсветить.
+listRef.current?.scrollToKey({ key, animated: true, highlight: true });
+listRef.current?.scrollToKey({ key, highlight: { duration: 2000, fade: 300 } });
+
+// Строка: как именно подсветиться.
+const MessageRow = ({ row }: { row: ChatRow }) => {
+  const { progress } = useAnchorListItemHighlight();
+
+  const style = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [BASE, ACCENT]),
+  }));
+
+  return <Animated.View style={style}>…</Animated.View>;
+};
+```
+
+| Параметр | По умолчанию | Что делает |
+| --- | --- | --- |
+| `duration` | `1200` | Сколько держать подсветку после появления, мс |
+| `fade` | `200` | Плавность появления и угасания, мс |
+
+**Момент.** Подсветка ждёт, пока строка не окажется в видимой части экрана, а
+не момента вызова: на анимированном переезде она иначе угасла бы раньше, чем
+строка доехала. Строка, которая уже на экране, загорается сразу. Жест
+пользователя во время переезда отменяет ожидающую подсветку — цели он уже не
+увидит; горящую жест не трогает.
+
+**Строка.** `useAnchorListItemHighlight()` внутри компонента, который вернул
+`renderItem`, отдаёт `progress` — shared value 0…1 для `useAnimatedStyle` — и
+`isHighlighted` для стилей в React. Подписка адресная: чужая подсветка строку
+не будит. Смена ключа под тем же контейнером гасит подсветку — она адресована
+строке, а не месту.
+
+Та же подсветка у [стартовой позиции](scrolling.md#стартовая-позиция): открыть
+переписку на непрочитанном и показать его — `initialScroll: { type: "key",
+key, highlight: true }`.
+
+### `highlightKey`
+
+```ts
+highlightKey(key: string, options?: { duration?: number; fade?: number }): boolean
+```
+
+Подсветить строку без перехода к ней: ответ на своё сообщение уже в кадре,
+или к строке перешли своими средствами. Строка на экране загорается сразу, за
+кадром — когда доедет. Возвращает `false`, если ключа нет в данных.
+
+### `clearHighlight`
+
+```ts
+clearHighlight(): void
+```
+
+Погасить горящую подсветку и забыть ожидающую.
 
 ---
 

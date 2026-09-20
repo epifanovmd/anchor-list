@@ -1,4 +1,7 @@
-import type { IAnchorListRef } from "@epifanovmd/anchor-list";
+import type {
+  IAnchorListRef,
+  IAnchorListRenderItemProps,
+} from "@epifanovmd/anchor-list";
 import { AnchorList } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -12,7 +15,8 @@ import {
   createMessages,
   ESTIMATED_ROW_SIZE,
 } from "../data";
-import { ChatRow } from "../rows";
+import type { HighlightStyle } from "../rows";
+import { HighlightedChatRow } from "../rows";
 import {
   ActionChip,
   ChipRow,
@@ -20,11 +24,14 @@ import {
   DebugToggles,
   Screen,
   StatusLine,
+  ToggleRow,
   useBottomInset,
 } from "../ui";
 
 const MESSAGE_COUNT = 300;
 const QUOTED_SEQ = MESSAGE_COUNT / 2;
+/** Варианты подсветки по кругу: стиль решает строка, а не список. */
+const HIGHLIGHT_STYLES: HighlightStyle[] = ["background", "outline", "pulse"];
 
 interface IJumpToMessageDemoProps {
   onBack: () => void;
@@ -38,6 +45,11 @@ interface IJumpToMessageDemoProps {
  * возвращает `false`, если строки с таким ключом в данных нет, — по нему видно,
  * что цитату нужно сначала подтянуть.
  *
+ * Переход подсвечивает цель: `highlight: true` загорается, когда строка
+ * доехала до кадра, а не в момент вызова. Как подсветка выглядит, решает
+ * строка — здесь три варианта по кругу. `highlightKey` подсвечивает строку
+ * без перехода: так отмечают ответ, который уже на экране.
+ *
  * Рядом — остальной императивный интерфейс: скролл к индексу, к концу контента
  * и разовый опрос геометрии.
  */
@@ -49,6 +61,9 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
   const [status, setStatus] = useState(
     "прокрутите список и вернитесь к цитате",
   );
+  const [highlight, setHighlight] = useState(true);
+  const [styleIndex, setStyleIndex] = useState(0);
+  const highlightStyle = HIGHLIGHT_STYLES[styleIndex]!;
 
   const quotedIndex = useMemo(
     () => data.findIndex(row => row.seq === QUOTED_SEQ),
@@ -62,10 +77,31 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
       key,
       animated: true,
       viewPosition: 0,
+      // Подсветка загорится, когда строка окажется в кадре, — не раньше.
+      highlight,
     });
 
     setStatus(found ? `переход к ${key}` : `строки ${key} нет в данных`);
-  }, [data, quotedIndex]);
+  }, [data, quotedIndex, highlight]);
+
+  /** Подсветить строку, которая уже на экране, — без перехода. */
+  const highlightVisible = useCallback(() => {
+    const list = listRef.current;
+
+    if (!list) return;
+
+    const index = list.getVisibleRange().start + 1;
+    const row = data[index];
+
+    if (!row) return;
+
+    list.highlightKey(chatRowKey(row), { duration: 2000 });
+    setStatus(`подсвечена ${chatRowKey(row)} без перехода`);
+  }, [data]);
+
+  const nextStyle = useCallback(() => {
+    setStyleIndex(index => (index + 1) % HIGHLIGHT_STYLES.length);
+  }, []);
 
   const jumpToStart = useCallback(() => {
     listRef.current?.scrollToIndex({ index: 0, animated: true });
@@ -90,13 +126,20 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
   }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: ChatRowData }) => <ChatRow row={item} />,
-    [],
+    ({ item }: IAnchorListRenderItemProps<ChatRowData>) => (
+      <HighlightedChatRow row={item} variant={highlightStyle} />
+    ),
+    [highlightStyle],
   );
 
   return (
     <Screen title={"Переход к сообщению"} onBack={onBack}>
       <ControlPanel>
+        <ToggleRow
+          title={"Подсвечивать цель перехода"}
+          value={highlight}
+          onChange={setHighlight}
+        />
         <StatusLine text={status} />
         <ChipRow>
           <ActionChip
@@ -106,6 +149,10 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
           <ActionChip title={"В начало"} onPress={jumpToStart} />
           <ActionChip title={"В конец"} onPress={jumpToEnd} />
           <ActionChip title={"Геометрия"} onPress={reportGeometry} />
+        </ChipRow>
+        <ChipRow>
+          <ActionChip title={"Подсветить видимую"} onPress={highlightVisible} />
+          <ActionChip title={`Стиль: ${highlightStyle}`} onPress={nextStyle} />
         </ChipRow>
         <DebugToggles channels={["scroll", "initial"]} />
       </ControlPanel>

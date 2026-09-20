@@ -80,6 +80,25 @@ export interface IAnchorListSignals {
   activeStickyStartIndex: number;
   /** Индекс прилипшего элемента у конечной кромки, -1 — нет. */
   activeStickyEndIndex: number;
+
+  /**
+   * Горящая подсветка строки; null — нет.
+   *
+   * Один сигнал на список, а не по контейнеру: подсветка адресована ключом и
+   * обязана пережить перепривязку контейнера. Ячейка сама сверяет ключ.
+   */
+  highlight: IAnchorListHighlightState | null;
+}
+
+/** Что ячейке нужно знать о подсветке. */
+export interface IAnchorListHighlightState {
+  key: string;
+  /** Сколько держать подсветку после появления, мс. */
+  duration: number;
+  /** Плавность появления и угасания, мс. */
+  fade: number;
+  /** Номер подсветки: повторная подсветка той же строки — новый объект. */
+  seq: number;
 }
 
 /**
@@ -151,4 +170,5 @@ export const INITIAL_SIGNALS: Partial<AnchorListSignalMap> = {
   scrollAdjust: 0,
   activeStickyStartIndex: -1,
   activeStickyEndIndex: -1,
+  highlight: null,
 };

@@ -1343,6 +1343,87 @@ describe("ListRuntime — стартовая позиция и снимок по
   });
 });
 
+describe("ListRuntime — подсветка строки", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(0), 16) as unknown as number;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("подсвечивает цель перехода, если она уже на экране", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.scrollToKey({ key: "k2", highlight: true });
+
+    expect(store.peek("highlight")).toMatchObject({ key: "k2" });
+  });
+
+  it("подсвечивает цель, когда она доехала до экрана", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.scrollToKey({ key: "k20", animated: true, highlight: true });
+    expect(store.peek("highlight")).toBeNull();
+
+    // Переезд дошёл: событие скролла привело диапазон к цели.
+    runtime.setScroll(2000);
+
+    expect(store.peek("highlight")).toMatchObject({ key: "k20" });
+  });
+
+  it("не подсвечивает без просьбы", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.scrollToKey({ key: "k2" });
+    runtime.scrollToIndex({ index: 3 });
+
+    expect(store.peek("highlight")).toBeNull();
+  });
+
+  it("жест отменяет подсветку, до которой не доехали", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.scrollToIndex({ index: 20, animated: true, highlight: true });
+    runtime.onGestureBegin();
+    runtime.setScroll(2000);
+
+    expect(store.peek("highlight")).toBeNull();
+  });
+
+  it("подсвечивает строку по ключу без перехода", () => {
+    const { store, runtime, adapter } = createRuntime();
+
+    expect(runtime.highlightKey("k1", { duration: 100 })).toBe(true);
+    expect(runtime.highlightKey("missing")).toBe(false);
+    expect(adapter.scrollToOffset).not.toHaveBeenCalled();
+    expect(store.peek("highlight")).toMatchObject({ key: "k1", duration: 100 });
+
+    runtime.clearHighlight();
+
+    expect(store.peek("highlight")).toBeNull();
+  });
+
+  it("подсвечивает стартовую позицию после показа списка", () => {
+    const { store, runtime, adapter } = createRuntime(rows(40), {
+      initialScroll: { type: "key", key: "k10", highlight: true },
+    });
+
+    (adapter.getOffset as jest.Mock).mockReturnValue(1000);
+    runtime.setContentSize(4000);
+    nextFrame();
+    nextFrame();
+
+    expect(store.peek("readyToRender")).toBe(true);
+    // Пока список был скрыт, подсвечивать было нечего: сигнал ждал показа.
+    runtime.setScroll(1000);
+
+    expect(store.peek("highlight")).toMatchObject({ key: "k10" });
+  });
+});
+
 describe("ListRuntime — прочее", () => {
   beforeEach(() => {
     jest.useFakeTimers();

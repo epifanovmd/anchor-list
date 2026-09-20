@@ -13,6 +13,7 @@
  */
 export { AnchorList } from "./components";
 export {
+  useAnchorListItemHighlight,
   useAnchorListItemState,
   useAnchorListItemVisibility,
   useAnchorListState,

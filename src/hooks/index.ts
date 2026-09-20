@@ -1,3 +1,4 @@
+export * from "./useAnchorListItemHighlight";
 export * from "./useAnchorListItemState";
 export * from "./useAnchorListItemVisibility";
 export * from "./useAnchorListState";

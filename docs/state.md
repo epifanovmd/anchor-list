@@ -176,6 +176,10 @@ const MessageRow = ({ row }: { row: ChatRow }) => {
 компонента, который вернул `renderItem`, как и `useAnchorListItemState`: при
 переработке контейнера значение само переключается на новую строку.
 
+Рядом живёт `useAnchorListItemHighlight()` — прогресс подсветки строки после
+перехода к ней, тоже shared value; см.
+[Подсветка](imperative-api.md#подсветка).
+
 ---
 
 ## `state`
@@ -232,8 +236,9 @@ const totalSize = useAnchorListValue(listState, "totalSize");
 | `numContainers` | `number` | Сколько контейнеров существует |
 | `scrollAdjust` | `number` | Накопленная компенсация позиции |
 | `contentOrigin` | `number` | Начало координат элементов внутри контента |
+| `highlight` | `{ key, duration, fade, seq } \| null` | Горящая подсветка строки; строке её отдаёт `useAnchorListItemHighlight` |
 
-Эти три внутренние и меняются вместе с реализацией.
+Эти четыре внутренние и меняются вместе с реализацией.
 
 `contentOrigin` — разница между координатами элементов (от нуля) и координатами
 контента (в них работает смещение скролла): она равна размеру шапки.

@@ -1,6 +1,7 @@
 export * from "./initial-offset";
 export * from "./initial-scroll";
 export * from "./inset-end";
+export * from "./item-highlight";
 export * from "./item-offset";
 export * from "./maintain-scroll-at-end";
 export * from "./programmatic-scroll";

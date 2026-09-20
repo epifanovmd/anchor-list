@@ -281,16 +281,19 @@ type AnchorListInitialScroll =
       index: number;
       viewPosition?: number;
       viewOffset?: number;
+      highlight?: boolean | { duration?: number; fade?: number };
     }
   | {
       type: "key";
       key: string;
       viewPosition?: number;
       viewOffset?: number;
+      highlight?: boolean | { duration?: number; fade?: number };
     };
 ```
 
-До применения стартовой позиции список не показан.
+До применения стартовой позиции список не показан. `highlight` подсвечивает
+строку после показа — как у [`scrollToKey`](imperative-api.md#подсветка).
 
 `key` — то же, что `index`, но строка адресуется ключом. Так восстанавливается
 снимок [`getScrollAnchor`](imperative-api.md#getscrollanchor): ключ переживает

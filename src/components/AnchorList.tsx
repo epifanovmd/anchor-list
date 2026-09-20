@@ -216,6 +216,8 @@ const AnchorListInner = <TItem,>(
       scrollToOffset: ({ offset, animated }) =>
         runtime.scrollToOffset(offset, animated),
       scrollToEnd: params => runtime.scrollToEnd(params?.animated),
+      highlightKey: (key, options) => runtime.highlightKey(key, options),
+      clearHighlight: () => runtime.clearHighlight(),
       getPositionAtIndex: index => runtime.getPositionAtIndex(index),
       getSizeAtIndex: index => runtime.getSizeAtIndex(index),
       getPositionByKey: key => runtime.getPositionByKey(key),
