@@ -131,6 +131,7 @@ export const railRowWidth = (row: RailRowData): number | undefined => {
 };
 
 /** Зазор между карточками; создаётся отступом слева. */
+/** Зазор между карточками; уходит списку пропом `gap` и в слоты не входит. */
 export const CARD_GAP = 8;
 /** Ширина метки месяца — она же прилипает к левой кромке. */
 export const MONTH_MARKER_WIDTH = 104;

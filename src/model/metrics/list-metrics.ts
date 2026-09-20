@@ -28,27 +28,64 @@ export class ListMetrics {
   private readonly index = new KeyIndex();
   private readonly sizes: ItemSizes;
   private readonly positions: PrefixPositions;
+  /**
+   * Зазор перед каждой строкой, параллельно ключам.
+   *
+   * По индексу, а не по ключу: зазор — свойство пары соседей, и при вставке
+   * выше он у той же строки может стать другим. Пересчитывается вместе с
+   * данными, как и типы.
+   */
+  private gaps: number[] = [];
 
   constructor({ estimatedItemSize, sizeCache }: IAnchorListMetricsOptions) {
     this.sizes = new ItemSizes({ estimatedItemSize, sizeCache });
     this.positions = new PrefixPositions({
       getCount: () => this.index.getCount(),
       getSize: index => this.getSize(index),
+      getGap: index => this.gaps[index] ?? 0,
     });
   }
 
   /**
    * Привязка к новым данным.
    *
+   * @param gaps зазор перед каждой строкой; без него зазоров нет.
    * @returns индекс, с которого раскладка поехала: до него позиции остались
    * прежними и пересчёт не нужен.
    */
-  setItems(keys: string[], types: string[]): number {
-    const divergedAt = this.index.setItems(keys, types);
+  setItems(keys: string[], types: string[], gaps: number[] = []): number {
+    const keysDivergedAt = this.index.setItems(keys, types);
+    // Зазор может смениться и при тех же ключах — отредактированное сообщение
+    // сменило группу. Совпадение ключей о раскладке тогда ничего не говорит.
+    const gapsDivergedAt = this.findGapDivergence(gaps, keys.length);
+
+    this.gaps = gaps;
+
+    const divergedAt = Math.min(keysDivergedAt, gapsDivergedAt);
 
     this.positions.markDirty(divergedAt);
 
     return divergedAt;
+  }
+
+  /**
+   * Первый индекс, где новые зазоры расходятся со старыми.
+   *
+   * @param count длина новых данных — она же ответ «расхождения нет».
+   */
+  private findGapDivergence(next: number[], count: number): number {
+    const checked = Math.max(this.gaps.length, next.length);
+
+    for (let index = 0; index < checked; index++) {
+      if ((this.gaps[index] ?? 0) !== (next[index] ?? 0)) return index;
+    }
+
+    return count;
+  }
+
+  /** Зазор перед элементом; у первого и без настройки — ноль. */
+  getGap(index: number): number {
+    return index === 0 ? 0 : (this.gaps[index] ?? 0);
   }
 
   /** Размер, объявленный пропом: элемент не участвует в измерении. */

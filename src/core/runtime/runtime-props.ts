@@ -32,8 +32,12 @@ export interface IAnchorListRuntimeProps<TItem> {
     type: string,
   ) => number | undefined;
   estimatedItemSize: number;
-  /** Кэж измерений, переживающий список. */
+  /** Кэш измерений, переживающий список. */
   sizeCache?: AnchorListSizeCache;
+  /** Зазор между строками, px; лежит между слотами, а не в них. */
+  gap: number;
+  /** Зазор перед конкретной строкой; перекрывает общий. */
+  getItemGap?: (item: TItem, index: number) => number;
   drawDistance: number;
   recycleItems?: boolean;
   itemsAreEqual?: (prev: TItem, next: TItem, index: number) => boolean;
@@ -88,6 +92,8 @@ export const createRuntimeProps = <TItem>(
     getFixedItemSize,
     estimatedItemSize,
     sizeCache,
+    gap = 0,
+    getItemGap,
     drawDistance = DEFAULT_DRAW_DISTANCE,
     recycleItems = false,
     itemsAreEqual,
@@ -115,6 +121,8 @@ export const createRuntimeProps = <TItem>(
     getFixedItemSize,
     estimatedItemSize,
     sizeCache,
+    gap,
+    getItemGap,
     drawDistance,
     recycleItems,
     itemsAreEqual,

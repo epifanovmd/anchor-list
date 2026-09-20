@@ -30,6 +30,7 @@ const createProps = (
   keyExtractor: item => item.id,
   getFixedItemSize: item => item.size,
   estimatedItemSize: ITEM_SIZE,
+  gap: 0,
   drawDistance: 0,
   startReachedThreshold: 0.5,
   endReachedThreshold: 0.5,
@@ -1421,6 +1422,51 @@ describe("ListRuntime — подсветка строки", () => {
     runtime.setScroll(1000);
 
     expect(store.peek("highlight")).toMatchObject({ key: "k10" });
+  });
+});
+
+describe("ListRuntime — зазор между строками", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(0), 16) as unknown as number;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("кладёт зазор между слотами, а не в них", () => {
+    const { store, runtime } = createRuntime(rows(40), { gap: 10 });
+
+    expect(runtime.getPositionAtIndex(1)).toBe(110);
+    expect(runtime.getSizeAtIndex(1)).toBe(100);
+    expect(store.peek("containerItemSize0")).toBe(100);
+    // 40 строк по 100 и 39 зазоров по 10.
+    expect(store.peek("totalSize")).toBe(4390);
+  });
+
+  it("держит видимую строку на месте, когда зазор перед ней сменился", () => {
+    // Зазор — свойство пары: подгрузка сверху делает бывшую первую строку
+    // не первой, и перед ней появляется зазор. Компенсация обязана это
+    // отработать, как обычную смену раскладки выше вьюпорта.
+    const { runtime, store } = createRuntime(rows(40), {
+      gap: 10,
+      maintainVisibleContentPositionData: true,
+    });
+
+    runtime.setContentSize(4390);
+    runtime.setScroll(1000);
+    runtime.setProps(
+      createProps([...rows(5, "h"), ...rows(40)], {
+        gap: 10,
+        maintainVisibleContentPositionData: true,
+      }),
+    );
+
+    // Пять строк по 100 и пять зазоров по 10 легли выше.
+    expect(store.peek("scrollAdjust")).toBe(550);
+    expect(runtime.getScroll()).toBe(1550);
   });
 });
 

@@ -561,7 +561,9 @@ export class ListRuntime<TItem> {
       dataChanged ||
       props.keyExtractor !== this.props.keyExtractor ||
       props.getItemType !== this.props.getItemType ||
-      props.getFixedItemSize !== this.props.getFixedItemSize;
+      props.getFixedItemSize !== this.props.getFixedItemSize ||
+      props.gap !== this.props.gap ||
+      props.getItemGap !== this.props.getItemGap;
     const stickyChanged = props.sticky !== this.props.sticky;
     const rangeChanged = props.drawDistance !== this.props.drawDistance;
     // Выравнивание короткого контента ядру не адресовано: его сдвиг считается
@@ -1576,10 +1578,13 @@ export class ListRuntime<TItem> {
       if (key === undefined || this.metrics.isPending(key)) continue;
       if (this.pool.getContainerByKey(key) === undefined) continue;
 
-      const position = this.metrics.getPosition(index);
-      const end = position + this.metrics.getSize(index);
+      // Зазор перед строкой закрыт ею же: это пустота по замыслу, а не дыра
+      // от опоздавшего контейнера.
+      const start =
+        this.metrics.getPosition(index) - this.metrics.getGap(index);
+      const end = this.metrics.getPosition(index) + this.metrics.getSize(index);
 
-      covered += Math.max(0, Math.min(end, bottom) - Math.max(position, top));
+      covered += Math.max(0, Math.min(end, bottom) - Math.max(start, top));
     }
 
     return Math.max(0, expected - covered);

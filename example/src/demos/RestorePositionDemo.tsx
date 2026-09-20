@@ -19,6 +19,7 @@ import {
   chatRowType,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
   positionStore,
 } from "../data";
 import { ChatRow } from "../rows";
@@ -209,6 +210,7 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
         getItemType={chatRowType}
         getFixedItemSize={chatRowHeight}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         initialScroll={initialScroll}
         state={listState}
         // Палец отпущен: смещение внутри той же строки в смену видимого

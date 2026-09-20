@@ -11,6 +11,7 @@ import {
   chatRowType,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
 } from "../data";
 import { ChatRow } from "../rows";
 import {
@@ -125,6 +126,7 @@ export const EndlessFeedDemo: FC<IEndlessFeedDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         getFixedItemSize={chatRowHeight}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         maintainVisibleContentPosition={maintainVisibleContentPosition}
         onStartReached={handleStartReached}
         onStartReachedThreshold={0.4}

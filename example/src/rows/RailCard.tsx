@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 
 import type { RailRowData } from "../data";
-import { CARD_GAP, MONTH_MARKER_WIDTH, RAIL_SPINNER_WIDTH } from "../data";
+import { MONTH_MARKER_WIDTH, RAIL_SPINNER_WIDTH } from "../data";
 import { Txt, useTheme } from "../ui";
 import { RailGroupTag } from "./RailGroupTag";
 
@@ -78,9 +78,9 @@ RailCard.displayName = "RailCard";
 
 const ss = StyleSheet.create({
   body: { borderRadius: 12, flex: 1, justifyContent: "center", padding: 10 },
-  // Зазор между карточками — отступ слева: правый край карточки совпадает с
-  // правым краем слота, поэтому метка садится ровно на него.
-  card: { paddingLeft: CARD_GAP, paddingVertical: 12 },
+  // Без горизонтальных отступов: зазор между карточками задаёт список пропом
+  // `gap`, и оба края слота — края карточки, на которые садятся метки.
+  card: { paddingVertical: 12 },
   month: { alignItems: "center", justifyContent: "center" },
   monthPill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
   spinner: { alignItems: "center", justifyContent: "center" },

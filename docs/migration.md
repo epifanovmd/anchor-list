@@ -16,6 +16,7 @@
 | `ListFooterComponent` | `ListFooterComponent` | — |
 | `ListEmptyComponent` | `ListEmptyComponent` | — |
 | `ItemSeparatorComponent` | `ItemSeparatorComponent` | **Рисуется внутри ячейки и входит в её высоту** |
+| `contentContainerStyle={{ gap }}` | `gap`, `getItemGap` | Зазор знает список: он между слотами, а не в них — [почему](rendering.md#отступы-и-зазоры) |
 | `onEndReached` | `onEndReached` | Один раз на жест; получает `{ distanceFromEnd }` |
 | `onEndReachedThreshold` | `onEndReachedThreshold` | Та же семантика — доли вьюпорта |
 | — | `onStartReached` / `onStartReachedThreshold` | Есть симметричный порог у начала |
@@ -68,7 +69,8 @@
 4. Соберите `viewabilityConfig` + `onViewableItemsChanged` в `viewabilityPairs`.
 5. Замените `onScroll` на `sharedValues`.
 6. Если был `inverted` — уберите его и перепишите по схеме выше.
-7. Учтите, что `ItemSeparatorComponent` теперь входит в высоту ячейки.
+7. Учтите, что `ItemSeparatorComponent` теперь входит в высоту ячейки; пустой
+   зазор между строками задавайте пропом `gap`, а не отступами внутри строк.
 
 ---
 

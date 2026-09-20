@@ -215,7 +215,6 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
         mode: "offset",
         size: AVATAR_SIZE,
         groupStarts,
-        limitInset: MESSAGE_GAP,
         renderOverlay: item => <PinnedAvatar row={item} />,
       },
     ],
@@ -344,6 +343,7 @@ export const LiveStateDemo: FC<ILiveStateDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         getFixedItemSize={chatRowHeight}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         sticky={sticky}
         sharedValues={sharedValues}
         state={listState}

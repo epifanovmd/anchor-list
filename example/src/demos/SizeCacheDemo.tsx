@@ -19,6 +19,7 @@ import {
   chatRowType,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
   positionStore,
 } from "../data";
 import { ChatRow } from "../rows";
@@ -174,6 +175,7 @@ export const SizeCacheDemo: FC<ISizeCacheDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         // Размеры нарочно не объявлены: кэш хранит только измеренное.
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         sizeCache={cacheEnabled ? sizeCache : undefined}
         initialScroll={initialScroll}
         state={listState}

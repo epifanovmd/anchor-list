@@ -112,7 +112,7 @@ export const chatRowHeight = (row: ChatRowData): number | undefined => {
   return row.height;
 };
 
-/** Зазор между сообщениями; создаётся отступом сверху пузыря. */
+/** Зазор между строками; уходит списку пропом `gap` и в слоты не входит. */
 export const MESSAGE_GAP = 8;
 
 export const DAY_ROW_HEIGHT = 44;

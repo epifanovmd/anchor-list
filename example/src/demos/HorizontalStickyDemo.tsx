@@ -74,7 +74,6 @@ export const HorizontalStickyDemo: FC<IHorizontalStickyDemoProps> = ({
         mode: "offset",
         size: GROUP_TAG_WIDTH,
         groupStarts,
-        limitInset: CARD_GAP,
         // Пока метка стоит у кромки, её рисует слой поверх списка: там у неё
         // нет покадрового трансформа и нечему дрожать.
         renderOverlay: item => <PinnedRailTag row={item} />,
@@ -131,6 +130,7 @@ export const HorizontalStickyDemo: FC<IHorizontalStickyDemoProps> = ({
           getItemType={railRowType}
           getFixedItemSize={railRowWidth}
           estimatedItemSize={ESTIMATED_CARD_WIDTH}
+          gap={CARD_GAP}
           drawDistance={600}
           sticky={sticky}
           recycleItems

@@ -14,6 +14,7 @@ import {
   chatRowType,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
 } from "../data";
 import type { HighlightStyle } from "../rows";
 import { HighlightedChatRow } from "../rows";
@@ -165,6 +166,7 @@ export const JumpToMessageDemo: FC<IJumpToMessageDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         getFixedItemSize={chatRowHeight}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         insetEnd={bottomInset}
         recycleItems
         style={ss.list}

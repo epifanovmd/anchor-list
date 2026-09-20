@@ -12,6 +12,7 @@ import {
   createMessage,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
 } from "../data";
 import { ChatRow } from "../rows";
 import {
@@ -324,6 +325,7 @@ export const HoldPositionDemo: FC<IHoldPositionDemoProps> = ({ onBack }) => {
         getItemType={chatRowType}
         getFixedItemSize={knownHeights ? chatRowHeight : undefined}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         maintainVisibleContentPosition={maintainVisibleContentPosition}
         insetEnd={bottomInset}
         recycleItems

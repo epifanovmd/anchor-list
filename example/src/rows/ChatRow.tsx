@@ -6,12 +6,7 @@ import type { AnimatedStyle, SharedValue } from "react-native-reanimated";
 import Animated from "react-native-reanimated";
 
 import type { ChatRowData } from "../data";
-import {
-  AVATAR_SIZE,
-  DAY_ROW_HEIGHT,
-  MESSAGE_GAP,
-  SPINNER_ROW_HEIGHT,
-} from "../data";
+import { AVATAR_SIZE, DAY_ROW_HEIGHT, SPINNER_ROW_HEIGHT } from "../data";
 import { Txt, useTheme } from "../ui";
 import { GroupAvatar } from "./GroupAvatar";
 
@@ -89,23 +84,20 @@ export const ChatRow: FC<IChatRowProps> = memo(
 ChatRow.displayName = "ChatRow";
 
 const ss = StyleSheet.create({
-  // Слот повторяет вертикальные границы пузыря: тот же отступ сверху, низ по
-  // низу строки. Так видимые края группы совпадают с теми, по которым список
-  // ограничивает ход аватара.
-  avatarSlot: { justifyContent: "flex-end", marginTop: MESSAGE_GAP, width: 44 },
-  // Зазор между сообщениями — отступ сверху пузыря: низ пузыря совпадает с
-  // низом строки, поэтому аватар садится ровно на него.
+  // Аватар садится на низ строки, а низ строки — это низ пузыря: зазор до
+  // соседа лежит снаружи слота, его задаёт список пропом `gap`.
+  avatarSlot: { justifyContent: "flex-end", width: 44 },
+  // Без вертикальных отступов: строка равна пузырю, и всё, что список считает
+  // по строке — размер, границы группы, видимость, подсветку, — он считает по
+  // пузырю.
   bubble: {
     borderRadius: 12,
     flex: 1,
     justifyContent: "center",
-    marginTop: MESSAGE_GAP,
     padding: 10,
   },
   dayPill: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
   dayRow: { alignItems: "center", justifyContent: "center" },
-  // Без вертикальных отступов: список считает границы группы по краям строк, и
-  // любой зазор здесь разводит их с видимыми краями сообщений.
   message: { flexDirection: "row", paddingHorizontal: 12 },
   spinner: {
     alignItems: "center",

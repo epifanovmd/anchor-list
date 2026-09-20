@@ -20,6 +20,10 @@ export interface IItemSourceExtractors<TItem> {
     index: number,
     type: string,
   ) => number | undefined;
+  /** Зазор перед каждой строкой, кроме первой. */
+  gap?: number;
+  /** Зазор перед конкретной строкой; перекрывает общий. */
+  getItemGap?: (item: TItem, index: number) => number;
 }
 
 /** Зависимости разбора данных. */
@@ -57,11 +61,17 @@ export class ItemSource<TItem> {
       keyExtractor,
       getItemType,
       getFixedItemSize,
+      gap = 0,
+      getItemGap,
     }: IItemSourceExtractors<TItem>,
   ): void {
     // Первое наполнение не в счёт: там новые все, и до измерений список всё
     // равно не показан.
     const appeared = this.keys.length === 0 ? undefined : new Set<string>();
+    // Зазоры считаются вместе с ключами: зазор — свойство пары соседей, и
+    // любая перестановка данных меняет его у тех же строк.
+    const hasGaps = gap !== 0 || getItemGap !== undefined;
+    const gaps = hasGaps ? new Array<number>(data.length) : undefined;
 
     this.keys = new Array<string>(data.length);
     this.types = new Array<string>(data.length);
@@ -77,13 +87,14 @@ export class ItemSource<TItem> {
 
       this.keys[index] = key;
       this.types[index] = type;
+      if (gaps) gaps[index] = getItemGap?.(item, index) ?? gap;
 
       const fixedSize = getFixedItemSize?.(item, index, type);
 
       if (fixedSize !== undefined) this.metrics.setFixedSize(key, fixedSize);
     }
 
-    this.metrics.setItems(this.keys, this.types);
+    this.metrics.setItems(this.keys, this.types, gaps);
 
     // Появившийся элемент не занимает места, пока его не измерили: иначе на
     // кадр разошлись бы отведённое место и нарисованная высота.

@@ -17,6 +17,7 @@ const createProps = (data: IRow[]): IAnchorListRuntimeProps<IRow> => ({
   data,
   keyExtractor: item => item.id,
   estimatedItemSize: 100,
+  gap: 0,
   drawDistance: 200,
   startReachedThreshold: 0.5,
   endReachedThreshold: 0.5,
@@ -109,6 +110,27 @@ describe("диагностика на проходе ядра", () => {
 
     // До первого показа в кадре нет ничего по построению: считать это дырой
     // значит объявлять пустотой каждое открытие списка.
+    expect(linesOf("layout·blank")).toHaveLength(0);
+  });
+
+  it("не считает зазор между строками незакрытой частью кадра", () => {
+    // Зазор — пустота по замыслу, а не дыра от опоздавшего контейнера:
+    // строки привязаны, а между ними по десять точек ничего нет.
+    const gapped = new ListRuntime<IRow>(new ListStore(), {
+      ...createProps(rows(50)),
+      getFixedItemSize: () => 100,
+      gap: 10,
+    });
+
+    gapped.setAdapter({
+      scrollToEnd: () => undefined,
+      scrollToOffset: () => undefined,
+      getOffset: () => 0,
+    });
+    gapped.setScrollLength(500);
+    lines = [];
+    gapped.calculateItemsInView();
+
     expect(linesOf("layout·blank")).toHaveLength(0);
   });
 

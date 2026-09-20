@@ -2,6 +2,15 @@
 export interface IPrefixPositionsOptions {
   getCount: () => number;
   getSize: (index: number) => number;
+  /**
+   * Зазор перед элементом; у первого — ноль.
+   *
+   * Зазор лежит между слотами, а не в них: в размер строки он не входит, в
+   * позицию следующей — входит. Так слот строки равен её содержимому, и всё,
+   * что считается по слоту — видимость, прилипание, замер, — считается по
+   * содержимому.
+   */
+  getGap?: (index: number) => number;
 }
 
 /**
@@ -57,6 +66,11 @@ export class PrefixPositions {
     if (index + 1 < this.valid) this.valid = index + 1;
 
     if (!this.totalDirty) this.total += delta;
+  }
+
+  /** Зазор перед элементом; без настройки — ноль. */
+  private gapBefore(index: number): number {
+    return index === 0 ? 0 : (this.options.getGap?.(index) ?? 0);
   }
 
   /** Позиция элемента; при необходимости досчитывается от последней чистой. */
@@ -129,6 +143,7 @@ export class PrefixPositions {
           this.options.getSize(this.valid - 1);
 
     for (let index = this.valid; index <= target; index++) {
+      position += this.gapBefore(index);
       this.positions[index] = position;
       position += this.options.getSize(index);
     }

@@ -16,6 +16,7 @@ import {
   createMessage,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
 } from "../data";
 import { ChatRow, JumpToEndButton } from "../rows";
 import {
@@ -143,6 +144,7 @@ export const ComposerInsetDemo: FC<IComposerInsetDemoProps> = ({ onBack }) => {
           getItemType={chatRowType}
           getFixedItemSize={chatRowHeight}
           estimatedItemSize={ESTIMATED_ROW_SIZE}
+          gap={MESSAGE_GAP}
           alignItemsAtEnd
           initialScroll={{ type: "end" }}
           maintainScrollAtEnd={maintainScrollAtEnd}

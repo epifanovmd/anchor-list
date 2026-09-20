@@ -102,7 +102,6 @@ const sticky = useMemo<IAnchorListStickyConfig<ChatRow>[]>(
       mode: "offset",
       size: AVATAR_SIZE,
       groupStarts,
-      limitInset: MESSAGE_GAP,
       renderOverlay: item => <PinnedAvatar row={item} />,
     },
   ],
@@ -151,9 +150,11 @@ const style = useAnimatedStyle(() => ({
 
 ### `limitInset`
 
-Сдвиг верхней границы группы вниз, px. Нужен, когда зазор между строками задан
-отступом внутри них: если у пузыря сообщения `marginTop: 8`, укажите
-`limitInset: 8`, иначе объект поднимется в этот зазор.
+Сдвиг верхней границы группы вниз, px. Нужен только когда зазор между строками
+задан отступом **внутри** строки: если у пузыря сообщения `marginTop: 8`,
+укажите `limitInset: 8`, иначе объект поднимется в этот зазор. С зазором на
+уровне списка — [`gap`](props.md#gap-number) — границы группы и так совпадают
+с краями пузырей, и проп не нужен.
 
 ### `renderOverlay`
 

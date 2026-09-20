@@ -73,7 +73,6 @@ export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
         mode: "offset",
         size: AVATAR_SIZE,
         groupStarts,
-        limitInset: MESSAGE_GAP,
         // Пока аватар стоит у кромки, его рисует слой поверх списка: там у него
         // нет покадрового трансформа и нечему дрожать.
         renderOverlay: item => <PinnedAvatar row={item} />,
@@ -126,6 +125,7 @@ export const PinnedAnchorsDemo: FC<IPinnedAnchorsDemoProps> = ({ onBack }) => {
         keyExtractor={chatRowKey}
         getItemType={chatRowType}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         drawDistance={600}
         sticky={sticky}
         insetEnd={bottomInset}

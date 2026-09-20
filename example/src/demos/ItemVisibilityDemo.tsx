@@ -20,6 +20,7 @@ import {
   chatRowType,
   createMessages,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
   withDaySeparators,
 } from "../data";
 import { FadingChatRow } from "../rows";
@@ -128,6 +129,7 @@ export const ItemVisibilityDemo: FC<IItemVisibilityDemoProps> = ({
           getItemType={chatRowType}
           getFixedItemSize={chatRowHeight}
           estimatedItemSize={ESTIMATED_ROW_SIZE}
+          gap={MESSAGE_GAP}
           sticky={sticky}
           insetEnd={insetEnd}
           recycleItems

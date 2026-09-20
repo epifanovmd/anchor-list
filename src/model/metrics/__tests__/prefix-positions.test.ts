@@ -15,6 +15,57 @@ const createPositions = (sizes: number[]) => {
   return { positions, state };
 };
 
+/** Тот же стенд, но с зазором перед каждой строкой, кроме первой. */
+const createGapped = (sizes: number[], gap: number) => {
+  const state = { sizes };
+  const positions = new PrefixPositions({
+    getCount: () => state.sizes.length,
+    getSize: index => state.sizes[index] ?? 0,
+    getGap: index => (index === 0 ? 0 : gap),
+  });
+
+  positions.markDirty(0);
+
+  return { positions, state };
+};
+
+describe("PrefixPositions — зазор между строками", () => {
+  it("зазор входит в позицию следующей строки, но не в размер", () => {
+    const { positions } = createGapped([100, 50, 200], 10);
+
+    expect(positions.getPosition(0)).toBe(0);
+    expect(positions.getPosition(1)).toBe(110);
+    expect(positions.getPosition(2)).toBe(170);
+  });
+
+  it("суммарная высота — размеры плюс зазоры между ними, без зазора по краям", () => {
+    const { positions } = createGapped([100, 50, 200], 10);
+
+    expect(positions.getTotal()).toBe(370);
+  });
+
+  it("смещение внутри зазора относится к строке над ним", () => {
+    // Диапазон отрисовки и якорь компенсации спрашивают «какая строка здесь»:
+    // в зазоре ответ — строка выше, иначе строка ниже считалась бы видимой на
+    // экране, где её ещё нет.
+    const { positions } = createGapped([100, 50, 200], 10);
+
+    expect(positions.findIndexAtOffset(105)).toBe(0);
+    expect(positions.findIndexAtOffset(110)).toBe(1);
+  });
+
+  it("правка размера не трогает зазоры", () => {
+    const { positions, state } = createGapped([100, 50, 200], 10);
+
+    positions.getTotal();
+    state.sizes[0] = 150;
+    positions.resize(0, 50);
+
+    expect(positions.getPosition(1)).toBe(160);
+    expect(positions.getTotal()).toBe(420);
+  });
+});
+
 describe("PrefixPositions", () => {
   it("раскладывает элементы подряд", () => {
     const { positions } = createPositions([100, 50, 200]);

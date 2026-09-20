@@ -21,6 +21,41 @@ const extractors = {
 const rows = (count: number, prefix = "k"): IRow[] =>
   Array.from({ length: count }, (_, index) => ({ id: `${prefix}${index}` }));
 
+describe("ItemSource — зазоры", () => {
+  it("общий зазор ставится перед каждой строкой, кроме первой", () => {
+    const { metrics, source } = createSource();
+
+    source.apply(rows(3), { ...extractors, gap: 8 });
+
+    expect(metrics.getGap(0)).toBe(0);
+    expect(metrics.getGap(1)).toBe(8);
+    expect(metrics.getPosition(2)).toBe(216);
+  });
+
+  it("зазор по элементу перекрывает общий", () => {
+    const { metrics, source } = createSource();
+
+    source.apply(rows(3), {
+      ...extractors,
+      gap: 8,
+      getItemGap: (_item, index) => (index === 2 ? 20 : 4),
+    });
+
+    expect(metrics.getGap(1)).toBe(4);
+    expect(metrics.getGap(2)).toBe(20);
+    expect(metrics.getTotalSize()).toBe(324);
+  });
+
+  it("без настройки зазоров нет", () => {
+    const { metrics, source } = createSource();
+
+    source.apply(rows(3), extractors);
+
+    expect(metrics.getGap(1)).toBe(0);
+    expect(metrics.getTotalSize()).toBe(300);
+  });
+});
+
 describe("ItemSource", () => {
   it("разбирает данные в ключи и типы", () => {
     const { source } = createSource();

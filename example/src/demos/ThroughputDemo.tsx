@@ -16,6 +16,7 @@ import {
   chatRowKey,
   chatRowType,
   ESTIMATED_ROW_SIZE,
+  MESSAGE_GAP,
   useFeedPagination,
 } from "../data";
 import { ChatRow } from "../rows";
@@ -81,6 +82,7 @@ export const ThroughputDemo: FC<IThroughputDemoProps> = ({ onBack }) => {
         keyExtractor={chatRowKey}
         getItemType={chatRowType}
         estimatedItemSize={ESTIMATED_ROW_SIZE}
+        gap={MESSAGE_GAP}
         sticky={sticky}
         maintainVisibleContentPosition={{ data: true, size: true }}
         onStartReached={onStartReached}

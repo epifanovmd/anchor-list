@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 
 import type { RailRowData } from "../data";
 import {
+  CARD_GAP,
   createCards,
   ESTIMATED_CARD_WIDTH,
   RAIL_HEIGHT,
@@ -152,6 +153,7 @@ export const HorizontalRailDemo: FC<IHorizontalRailDemoProps> = ({
           getItemType={railRowType}
           getFixedItemSize={measured ? undefined : railRowWidth}
           estimatedItemSize={ESTIMATED_CARD_WIDTH}
+          gap={CARD_GAP}
           maintainVisibleContentPosition={maintainVisibleContentPosition}
           onStartReached={handleStartReached}
           onStartReachedThreshold={0.4}
