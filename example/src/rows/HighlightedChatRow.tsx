@@ -1,11 +1,7 @@
 import { useAnchorListItemHighlight } from "@epifanovmd/anchor-list";
 import type { FC } from "react";
 import { memo } from "react";
-import { StyleSheet } from "react-native";
-import Animated, {
-  interpolateColor,
-  useAnimatedStyle,
-} from "react-native-reanimated";
+import { interpolateColor, useAnimatedStyle } from "react-native-reanimated";
 
 import type { ChatRowData } from "../data";
 import { useTheme } from "../ui";
@@ -27,6 +23,10 @@ interface IHighlightedChatRowProps {
  * UI-потоке, — а как это выглядит, решает сама строка. Три варианта здесь —
  * ровно чтобы показать, что стиль не зашит в список.
  *
+ * Подсвечивается пузырь, а не слот строки. Слот — это вся строка вместе с
+ * зазором над пузырём и полями по бокам: список измеряет, прилипает и считает
+ * видимость по нему. Эффект на слоте показал бы его границы, а не сообщения.
+ *
  * Хук вызывается внутри компонента, который `renderItem` вернул, — иначе
  * подсветка привязалась бы к контейнеру и досталась чужой строке.
  */
@@ -35,55 +35,33 @@ export const HighlightedChatRow: FC<IHighlightedChatRowProps> = memo(
     const { palette } = useTheme();
     const { progress } = useAnchorListItemHighlight();
 
-    // Подложка, а не рамка на самой строке: объявленный размер строки границу
-    // не включает, и рамка на обёртке сдвинула бы всё ниже на её толщину.
-    const backdropStyle = useAnimatedStyle(() => ({
-      backgroundColor:
-        variant === "background"
-          ? interpolateColor(
-              progress.value,
-              [0, 1],
-              ["transparent", palette.accent + "55"],
-            )
-          : "transparent",
-      borderColor:
-        variant === "outline"
-          ? interpolateColor(
-              progress.value,
-              [0, 1],
-              ["transparent", palette.accent],
-            )
-          : "transparent",
-    }));
+    const bubbleStyle = useAnimatedStyle(() => {
+      if (variant === "outline") {
+        return {
+          borderColor: interpolateColor(
+            progress.value,
+            [0, 1],
+            [palette.bubble, palette.accent],
+          ),
+          borderWidth: 2,
+        };
+      }
 
-    const pulseStyle = useAnimatedStyle(() => ({
-      transform: [
-        { scale: variant === "pulse" ? 1 + 0.04 * progress.value : 1 },
-      ],
-    }));
+      if (variant === "pulse") {
+        return { transform: [{ scale: 1 + 0.03 * progress.value }] };
+      }
 
-    return (
-      <Animated.View style={pulseStyle}>
-        <Animated.View
-          pointerEvents={"none"}
-          style={[ss.backdrop, backdropStyle]}
-        />
-        <ChatRow row={row} />
-      </Animated.View>
-    );
+      return {
+        backgroundColor: interpolateColor(
+          progress.value,
+          [0, 1],
+          [palette.bubble, palette.accent],
+        ),
+      };
+    });
+
+    return <ChatRow row={row} bubbleStyle={bubbleStyle} />;
   },
 );
 
 HighlightedChatRow.displayName = "HighlightedChatRow";
-
-const ss = StyleSheet.create({
-  backdrop: {
-    borderRadius: 14,
-    borderWidth: 2,
-    bottom: 0,
-    left: 6,
-    position: "absolute",
-    right: 6,
-    top: 0,
-  },
-});

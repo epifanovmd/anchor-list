@@ -31,7 +31,9 @@ export const FadingChatRow: FC<IFadingChatRowProps> = memo(({ row, fade }) => {
   const { palette } = useTheme();
   const visibility = useAnchorListItemVisibility();
 
-  const rowStyle = useAnimatedStyle(() =>
+  // Эффект на пузыре, а не на слоте строки: слот вместе с зазором и полями —
+  // то, что список меряет и по чему считает видимость; сообщение — пузырь.
+  const bubbleStyle = useAnimatedStyle(() =>
     fade
       ? {
           opacity: 0.25 + 0.75 * visibility.value,
@@ -46,9 +48,9 @@ export const FadingChatRow: FC<IFadingChatRowProps> = memo(({ row, fade }) => {
 
   return (
     <View style={ss.wrap}>
-      <Animated.View style={[ss.row, rowStyle]}>
-        <ChatRow row={row} />
-      </Animated.View>
+      <View style={ss.row}>
+        <ChatRow row={row} bubbleStyle={bubbleStyle} />
+      </View>
       <View style={[ss.gaugeTrack, { backgroundColor: palette.pill }]}>
         <Animated.View
           style={[

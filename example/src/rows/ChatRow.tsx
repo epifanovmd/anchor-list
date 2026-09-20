@@ -1,7 +1,9 @@
 import type { FC } from "react";
 import { memo } from "react";
+import type { ViewStyle } from "react-native";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import type { SharedValue } from "react-native-reanimated";
+import type { AnimatedStyle, SharedValue } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
 import type { ChatRowData } from "../data";
 import {
@@ -21,11 +23,18 @@ interface IChatRowProps {
   stickyOffset?: SharedValue<number>;
   /** Аватар сейчас нарисован слоем поверх списка. */
   stickyPinned?: SharedValue<boolean>;
+  /**
+   * Стиль пузыря — сюда приходят эффекты строки: подсветка, затухание.
+   *
+   * Именно пузыря, а не строки: строка — это слот с зазором сверху и полями
+   * по бокам, и эффект на ней показал бы границы слота, а не сообщения.
+   */
+  bubbleStyle?: AnimatedStyle<ViewStyle>;
 }
 
 /** Строка примера: сообщение, разделитель даты или спиннер подгрузки. */
 export const ChatRow: FC<IChatRowProps> = memo(
-  ({ row, withAvatar = false, stickyOffset, stickyPinned }) => {
+  ({ row, withAvatar = false, stickyOffset, stickyPinned, bubbleStyle }) => {
     const { palette } = useTheme();
 
     if (row.type === "spinner") {
@@ -64,12 +73,14 @@ export const ChatRow: FC<IChatRowProps> = memo(
           </View>
         ) : null}
 
-        <View style={[ss.bubble, { backgroundColor: palette.bubble }]}>
+        <Animated.View
+          style={[ss.bubble, { backgroundColor: palette.bubble }, bubbleStyle]}
+        >
           <Txt role={"caption"} muted>
             {`${row.author} · ${row.day}`}
           </Txt>
           <Txt role={"body"}>{row.text}</Txt>
-        </View>
+        </Animated.View>
       </View>
     );
   },
