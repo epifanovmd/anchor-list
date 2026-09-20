@@ -1,4 +1,8 @@
-import { ListStore, POSITION_OUT_OF_VIEW } from "../../../model";
+import {
+  createAnchorListSizeCache,
+  ListStore,
+  POSITION_OUT_OF_VIEW,
+} from "../../../model";
 import type { IScrollAdapter } from "../../scroll";
 import { getStickyOffset } from "../../sticky";
 import { ListRuntime } from "../list-runtime";
@@ -1164,6 +1168,80 @@ describe("ListRuntime — чтение и адресация по ключу", (
 
     expect(runtime.scrollToKey({ key: "missing" })).toBe(false);
     expect(adapter.scrollToOffset).not.toHaveBeenCalled();
+  });
+});
+
+describe("ListRuntime — кэш измерений", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(0), 16) as unknown as number;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("второй список открывается на размерах, измеренных первым", () => {
+    const sizeCache = createAnchorListSizeCache();
+    const first = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      sizeCache,
+    });
+
+    // Первый список ждал замеров: до них строки только оценены.
+    expect(first.store.peek("readyToRender")).toBe(false);
+
+    // Замеры по 60: на экран в 500 точек попадают девять строк.
+    for (let index = 0; index < 10; index++) {
+      first.runtime.setItemSize(`k${index}`, 60);
+    }
+    nextFrame();
+
+    expect(first.store.peek("readyToRender")).toBe(true);
+    first.runtime.dispose();
+
+    // Второй — над тем же кэшем: видимые строки известны, показ сразу, без
+    // единого замера.
+    const second = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      sizeCache,
+    });
+
+    expect(second.store.peek("readyToRender")).toBe(true);
+    expect(second.runtime.getPositionAtIndex(6)).toBe(360);
+    expect(second.runtime.isItemSizeKnown("k3")).toBe(true);
+  });
+
+  it("стартовая позиция по кэшу доводится без ожидания замеров", () => {
+    const sizeCache = createAnchorListSizeCache();
+    const first = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      sizeCache,
+    });
+
+    for (let index = 0; index < 40; index++) {
+      first.runtime.setItemSize(`k${index}`, 60);
+    }
+    nextFrame();
+    first.runtime.dispose();
+
+    const second = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      sizeCache,
+      initialScroll: { type: "key", key: "k20" },
+    });
+
+    (second.adapter.getOffset as jest.Mock).mockReturnValue(1200);
+    second.runtime.setContentSize(2400);
+    expect(second.adapter.scrollToOffset).toHaveBeenCalledWith(1200, false);
+
+    // Пара кадров доводки — и список показан задолго до страховки: всё, что
+    // окажется на экране, известно из кэша, и ждать замеров не нужно.
+    nextFrame();
+    nextFrame();
+
+    expect(second.store.peek("readyToRender")).toBe(true);
   });
 });
 

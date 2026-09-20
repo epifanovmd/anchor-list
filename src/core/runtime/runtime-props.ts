@@ -1,3 +1,4 @@
+import type { AnchorListSizeCache } from "../../model";
 import type {
   AnchorListInitialScroll,
   IAnchorListAnchoredEndSpace,
@@ -31,6 +32,8 @@ export interface IAnchorListRuntimeProps<TItem> {
     type: string,
   ) => number | undefined;
   estimatedItemSize: number;
+  /** Кэж измерений, переживающий список. */
+  sizeCache?: AnchorListSizeCache;
   drawDistance: number;
   recycleItems?: boolean;
   itemsAreEqual?: (prev: TItem, next: TItem, index: number) => boolean;
@@ -84,6 +87,7 @@ export const createRuntimeProps = <TItem>(
     getItemType,
     getFixedItemSize,
     estimatedItemSize,
+    sizeCache,
     drawDistance = DEFAULT_DRAW_DISTANCE,
     recycleItems = false,
     itemsAreEqual,
@@ -110,6 +114,7 @@ export const createRuntimeProps = <TItem>(
     getItemType,
     getFixedItemSize,
     estimatedItemSize,
+    sizeCache,
     drawDistance,
     recycleItems,
     itemsAreEqual,

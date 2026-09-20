@@ -1,10 +1,13 @@
 import { ItemSizes } from "./item-sizes";
 import { KeyIndex } from "./key-index";
 import { PrefixPositions } from "./prefix-positions";
+import type { AnchorListSizeCache } from "./size-cache";
 
 /** Настройки раскладки списка. */
 export interface IAnchorListMetricsOptions {
   estimatedItemSize: number;
+  /** Кэш измерений, переживающий список; см. {@link AnchorListSizeCache}. */
+  sizeCache?: AnchorListSizeCache;
 }
 
 /**
@@ -26,8 +29,8 @@ export class ListMetrics {
   private readonly sizes: ItemSizes;
   private readonly positions: PrefixPositions;
 
-  constructor({ estimatedItemSize }: IAnchorListMetricsOptions) {
-    this.sizes = new ItemSizes({ estimatedItemSize });
+  constructor({ estimatedItemSize, sizeCache }: IAnchorListMetricsOptions) {
+    this.sizes = new ItemSizes({ estimatedItemSize, sizeCache });
     this.positions = new PrefixPositions({
       getCount: () => this.index.getCount(),
       getSize: index => this.getSize(index),

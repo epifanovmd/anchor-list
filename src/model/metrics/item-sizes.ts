@@ -1,4 +1,5 @@
 import { TypeSizeAverages } from "./size-averages";
+import type { AnchorListSizeCache } from "./size-cache";
 
 /** Изменение измеренной высоты меньше этого — шум округления экрана. */
 const MEASURE_EPSILON = 1;
@@ -7,6 +8,20 @@ const MEASURE_EPSILON = 1;
 export interface IItemSizesOptions {
   /** Стартовая оценка до первого измерения любого элемента. */
   estimatedItemSize: number;
+  /**
+   * Внешнее хранилище измеренных размеров.
+   *
+   * Замеры читаются из него и пишутся в него: строка, измеренная прошлым
+   * списком над теми же данными, известна этому с первого кадра.
+   */
+  sizeCache?: AnchorListSizeCache;
+}
+
+/** Что хранилищу измерений нужно уметь: `Map` и кэш подходят одинаково. */
+interface IMeasuredSizes {
+  get(key: string): number | undefined;
+  has(key: string): boolean;
+  set(key: string, size: number): void;
 }
 
 /**
@@ -29,8 +44,13 @@ export interface IItemSizesOptions {
  *   кадр расходятся отведённый ему слот и нарисованная высота.
  */
 export class ItemSizes {
-  /** Измеренные размеры; ключ переживает смену данных. */
-  private readonly measured = new Map<string, number>();
+  /**
+   * Измеренные размеры; ключ переживает смену данных.
+   *
+   * С кэшем это само хранилище кэша, а не его копия: замер, принятый здесь,
+   * тут же виден и следующему списку, и соседнему над теми же данными.
+   */
+  private readonly measured: IMeasuredSizes;
   /** Размеры, объявленные через `getFixedItemSize` — измерять их не нужно. */
   private readonly fixed = new Map<string, number>();
   /**
@@ -57,8 +77,9 @@ export class ItemSizes {
 
   private readonly estimatedItemSize: number;
 
-  constructor({ estimatedItemSize }: IItemSizesOptions) {
+  constructor({ estimatedItemSize, sizeCache }: IItemSizesOptions) {
     this.estimatedItemSize = estimatedItemSize;
+    this.measured = sizeCache ?? new Map<string, number>();
   }
 
   /**

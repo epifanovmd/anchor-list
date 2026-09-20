@@ -3,7 +3,7 @@ import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef, SharedValue } from "react-native-reanimated";
 
-import type { AnchorListState } from "./model";
+import type { AnchorListSizeCache, AnchorListState } from "./model";
 
 /** Элемент, отданный в `renderItem`. */
 export interface IAnchorListRenderItemProps<TItem> {
@@ -403,6 +403,16 @@ export interface IAnchorListProps<TItem> {
   ) => number | undefined;
   /** Стартовая оценка размера до первого измерения. */
   estimatedItemSize: number;
+  /**
+   * Кэш измеренных размеров, переживающий размонтирование списка.
+   *
+   * Создаётся `createAnchorListSizeCache()` вне компонента — на экран или на
+   * данные — и отдаётся каждому списку над теми же ключами. Строки, измеренные
+   * в прошлой жизни списка, известны с первого кадра: список показывается
+   * сразу, а стартовая позиция не доводится по оценкам. Задаётся при
+   * монтировании; смена кэша у живого списка не применяется.
+   */
+  sizeCache?: AnchorListSizeCache;
   /** Переиспользовать смонтированные контейнеры вместо перемонтирования. */
   recycleItems?: boolean;
   /**

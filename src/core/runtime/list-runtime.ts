@@ -234,6 +234,7 @@ export class ListRuntime<TItem> {
     this.props = props;
     this.metrics = new ListMetrics({
       estimatedItemSize: props.estimatedItemSize,
+      sizeCache: props.sizeCache,
     });
 
     const adapter = () => this.adapter;

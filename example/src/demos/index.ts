@@ -10,4 +10,5 @@ export * from "./JumpToMessageDemo";
 export * from "./LiveStateDemo";
 export * from "./PinnedAnchorsDemo";
 export * from "./RestorePositionDemo";
+export * from "./SizeCacheDemo";
 export * from "./ThroughputDemo";

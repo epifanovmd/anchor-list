@@ -9,11 +9,13 @@ import { JumpToMessageDemo } from "./JumpToMessageDemo";
 import { LiveStateDemo } from "./LiveStateDemo";
 import { PinnedAnchorsDemo } from "./PinnedAnchorsDemo";
 import { RestorePositionDemo } from "./RestorePositionDemo";
+import { SizeCacheDemo } from "./SizeCacheDemo";
 import { ThroughputDemo } from "./ThroughputDemo";
 
 /** Идентификатор стенда; он же ключ маршрута. */
 export type DemoId =
   | "restore-position"
+  | "size-cache"
   | "endless-feed"
   | "hold-position"
   | "composer-inset"
@@ -42,6 +44,14 @@ export const DEMOS: IDemoEntry[] = [
       "Первое открытие — на заданной строке; дальше позиция запоминается при уходе и восстанавливается к первому кадру",
     covers: ["initialScroll", "getScrollAnchor"],
     screen: RestorePositionDemo,
+  },
+  {
+    id: "size-cache",
+    title: "Кэш измерений",
+    description:
+      "Размеры строк переживают уход с экрана: возврат открывает список на месте с первой попытки",
+    covers: ["sizeCache", "initialScroll", "getScrollAnchor", "onLoad"],
+    screen: SizeCacheDemo,
   },
   {
     id: "endless-feed",

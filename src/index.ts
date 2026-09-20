@@ -22,7 +22,11 @@ export type {
   AnchorListSignalName,
   IAnchorListSignals,
 } from "./model";
-export { AnchorListState } from "./model";
+export {
+  AnchorListSizeCache,
+  AnchorListState,
+  createAnchorListSizeCache,
+} from "./model";
 export * from "./types";
 
 /**

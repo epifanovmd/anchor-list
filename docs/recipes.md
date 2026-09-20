@@ -183,10 +183,15 @@ export const RestorableList = ({ data }: { data: ChatRow[] }) => {
       ref={listRef}
       data={data}
       initialScroll={initialScroll}
+      // Размеры строк переживают экран: открытие без единого замера.
+      sizeCache={sizeCache}
       // ...
     />
   );
 };
+
+// Вне компонента: кэш живёт, пока живёт модуль.
+const sizeCache = createAnchorListSizeCache();
 ```
 
 **Хранилище должно быть синхронным** — MMKV, а не AsyncStorage.
