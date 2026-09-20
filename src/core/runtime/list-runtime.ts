@@ -2,6 +2,7 @@ import {
   initialDebug,
   layoutDebug,
   logInitialMeasure,
+  logInitialMissing,
   logLayoutBlank,
   logLayoutContent,
   logLayoutMeasure,
@@ -17,6 +18,7 @@ import {
 import type { IAnchorListStickyGeometry, IContainerRequest } from "../../model";
 import { ContainerPool, ListMetrics, ListStore } from "../../model";
 import { listPerf, perfNow } from "../../perf";
+import type { IAnchorListScrollAnchor } from "../../types";
 import { ItemSource } from "../data";
 import type { IEdgeCheckContext, ListEdge } from "../edges";
 import { EdgeThresholds } from "../edges";
@@ -206,6 +208,13 @@ export class ListRuntime<TItem> {
    * стоял, и сравнивать не с чем: первое движение из покоя рывком не бывает.
    */
   private usualEventDelta: number | undefined;
+  /**
+   * Об отсутствующем ключе стартовой позиции уже сказано.
+   *
+   * Проверка идёт на каждой попытке доводки, а сообщить нужно один раз: это
+   * событие про снимок, а не про кадр.
+   */
+  private missingTargetReported = false;
   /** Меняется только когда данные или геометрия требуют полной публикации. */
   private layoutRevision = 0;
   private requestRevision = 0;
@@ -293,7 +302,7 @@ export class ListRuntime<TItem> {
       getDrawDistance: () => this.props.drawDistance,
     });
     this.initialScroll = new InitialScroll({
-      getTarget: () => this.props.initialScroll,
+      getTarget: () => this.getInitialTarget(),
       resolveOffset: () => this.initialOffset.resolve(),
       // Через ту же пометку, что и остальной программный скролл: доводка
       // стартовой позиции — переезд списка, а не движение пользователя.
@@ -312,13 +321,37 @@ export class ListRuntime<TItem> {
       metrics: this.metrics,
       getRange: () => this.range,
       getCount: () => this.items.getCount(),
-      hasInitialTarget: () => this.props.initialScroll !== undefined,
+      hasInitialTarget: () => this.getInitialTarget() !== undefined,
       getLayoutRevision: () => this.layoutRevision,
       isPending: () => this.initialScroll.isActive(),
       finish: (cause, rounds) => this.initialScroll.finish(cause, rounds),
     });
 
     this.items.apply(props.data, props);
+  }
+
+  /**
+   * Стартовая позиция, которую ещё имеет смысл доводить.
+   *
+   * Ключ, которого нет в уже загруженных данных, — не цель: строку удалили
+   * между снимком и открытием, и ждать её — держать список скрытым до
+   * страховки. Такая цель снимается, и показом распоряжаются замеры, как без
+   * `initialScroll`. Пустые данные целью не считаются потерянной — см.
+   * {@link InitialOffsetResolver.isTargetMissing}.
+   */
+  private getInitialTarget() {
+    const target = this.props.initialScroll;
+
+    if (target === undefined || !this.initialOffset.isTargetMissing()) {
+      return target;
+    }
+
+    if (!this.missingTargetReported && target.type === "key") {
+      this.missingTargetReported = true;
+      logInitialMissing({ key: target.key, count: this.items.getCount() });
+    }
+
+    return undefined;
   }
 
   /** Привязка к нативному скроллу; вызывается при монтировании списка. */
@@ -781,6 +814,25 @@ export class ListRuntime<TItem> {
   /** Индекс элемента по ключу; undefined — ключа нет в данных. */
   getIndexByKey(key: string): number | undefined {
     return this.metrics.getIndexByKey(key);
+  }
+
+  /**
+   * Снимок позиции: строка у начальной кромки и её смещение от кромки.
+   *
+   * Смещение считается в координатах контента — тех же, в которых стартовая
+   * позиция по ключу его применит: шапка входит в обе стороны разности и
+   * сокращается. Округления нет намеренно: снимок хранится как есть, а на
+   * целые точки его переводит доводка — см. `toWholePoints`.
+   */
+  getScrollAnchor(): IAnchorListScrollAnchor | undefined {
+    if (this.range.end < this.range.start) return undefined;
+
+    const index = this.range.start;
+    const key = this.items.getKey(index);
+
+    if (key === undefined) return undefined;
+
+    return { key, offset: this.metrics.getPosition(index) - this.scroll };
   }
 
   /** Скролл к смещению в координатах контента. */

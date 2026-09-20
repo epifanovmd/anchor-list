@@ -5,6 +5,7 @@ import { InitialScroll } from "../initial-scroll";
 /** Диагностика выключена, и содержимое описания цели тестам безразлично. */
 const describeTarget = (): IInitialTargetDescription => ({
   target: "index",
+  key: undefined,
   index: 0,
   position: 0,
   size: 0,

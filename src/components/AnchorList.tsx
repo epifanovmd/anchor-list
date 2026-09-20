@@ -220,6 +220,7 @@ const AnchorListInner = <TItem,>(
       getSizeAtIndex: index => runtime.getSizeAtIndex(index),
       getPositionByKey: key => runtime.getPositionByKey(key),
       getIndexByKey: key => runtime.getIndexByKey(key),
+      getScrollAnchor: () => runtime.getScrollAnchor(),
       getVisibleRange: () => runtime.getRange(),
       getScrollOffset: () => runtime.getScroll(),
       getContentSize: () => runtime.getContentSize(),

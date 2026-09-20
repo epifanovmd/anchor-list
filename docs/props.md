@@ -258,10 +258,21 @@ type AnchorListInitialScroll =
       index: number;
       viewPosition?: number;
       viewOffset?: number;
+    }
+  | {
+      type: "key";
+      key: string;
+      viewPosition?: number;
+      viewOffset?: number;
     };
 ```
 
 До применения стартовой позиции список не показан.
+
+`key` — то же, что `index`, но строка адресуется ключом. Так восстанавливается
+снимок [`getScrollAnchor`](imperative-api.md#getscrollanchor): ключ переживает
+подгрузку истории и перезагрузку данных, индекс — нет. Если ключа в данных нет,
+список открывается как без стартовой позиции; пока данные пусты — ждёт их.
 
 Пока стартовый скролл активен, пороги кромок не проверяются.
 

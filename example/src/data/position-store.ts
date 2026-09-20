@@ -1,10 +1,7 @@
-/** Сохранённая позиция списка. */
-export interface ISavedPosition {
-  /** Ключ строки, стоявшей у верхней кромки. */
-  key: string;
-  /** Смещение этой строки относительно кромки; отрицательное — уходит за неё. */
-  offset: number;
-}
+import type { IAnchorListScrollAnchor } from "@epifanovmd/anchor-list";
+
+/** Сохранённая позиция списка — снимок `getScrollAnchor` как есть. */
+export type ISavedPosition = IAnchorListScrollAnchor;
 
 /**
  * Позиция списка между открытиями экрана.

@@ -29,6 +29,7 @@ import { getItemScrollOffset } from "./item-offset";
  */
 export interface IInitialTargetDescription {
   target: string;
+  key: string | undefined;
   index: number | undefined;
   position: number | undefined;
   size: number | undefined;
@@ -93,10 +94,11 @@ export class InitialOffsetResolver {
    */
   describe(): IInitialTargetDescription {
     const target = this.options.getTarget();
-    const index = target?.type === "index" ? target.index : undefined;
+    const index = this.resolveTargetIndex();
 
     return {
       target: target?.type ?? "—",
+      key: target?.type === "key" ? target.key : undefined,
       index,
       position:
         index === undefined
@@ -104,7 +106,10 @@ export class InitialOffsetResolver {
           : this.options.metrics.getPosition(index),
       size:
         index === undefined ? undefined : this.options.metrics.getSize(index),
-      viewOffset: target?.type === "index" ? target.viewOffset : undefined,
+      viewOffset:
+        target?.type === "index" || target?.type === "key"
+          ? target.viewOffset
+          : undefined,
       count: this.options.metrics.getCount(),
       content: this.options.getContentSize(),
       measured: this.options.isContentMeasured(),
@@ -148,14 +153,14 @@ export class InitialOffsetResolver {
       return toWholePoints(maxScroll, maxScroll);
     }
 
-    if (target.index < 0 || target.index >= metrics.getCount()) {
-      return undefined;
-    }
+    const index = this.resolveTargetIndex();
+
+    if (index === undefined) return undefined;
 
     return toWholePoints(
       getItemScrollOffset({
-        position: metrics.getPosition(target.index),
-        size: metrics.getSize(target.index),
+        position: metrics.getPosition(index),
+        size: metrics.getSize(index),
         scrollLength,
         viewPosition: target.viewPosition,
         viewOffset: target.viewOffset,
@@ -163,6 +168,46 @@ export class InitialOffsetResolver {
       }),
       maxScroll,
     );
+  }
+
+  /**
+   * Цель названа ключом, а строки с таким ключом в данных нет.
+   *
+   * Ждать её нечего: снимок позиции пережил удаление строки, и список должен
+   * открыться как без стартовой позиции — сразу, а не по страховке первого
+   * показа. Пустые данные — другой случай: они ещё не загрузились, и ключ
+   * вполне может прийти со страницей. Индекс вне данных сюда не относится:
+   * он ждёт, как и раньше.
+   */
+  isTargetMissing(): boolean {
+    const target = this.options.getTarget();
+
+    if (target?.type !== "key") return false;
+
+    const { metrics } = this.options;
+
+    return (
+      metrics.getCount() > 0 && metrics.getIndexByKey(target.key) === undefined
+    );
+  }
+
+  /**
+   * Индекс целевой строки; `undefined` — цель не строка или строки нет.
+   *
+   * Ключ переводится в индекс здесь и каждый раз заново: между попытками
+   * доводки данные могли пополниться сверху, и та же строка лежит уже на
+   * другом индексе.
+   */
+  private resolveTargetIndex(): number | undefined {
+    const target = this.options.getTarget();
+    const { metrics } = this.options;
+
+    if (target?.type === "key") return metrics.getIndexByKey(target.key);
+    if (target?.type !== "index") return undefined;
+
+    return target.index < 0 || target.index >= metrics.getCount()
+      ? undefined
+      : target.index;
   }
 
   /**

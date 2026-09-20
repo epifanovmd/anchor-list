@@ -1167,6 +1167,104 @@ describe("ListRuntime — чтение и адресация по ключу", (
   });
 });
 
+describe("ListRuntime — стартовая позиция и снимок по ключу", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(0), 16) as unknown as number;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("открывает список на строке по ключу", () => {
+    const { runtime, adapter } = createRuntime(rows(40), {
+      initialScroll: { type: "key", key: "k10", viewOffset: -50 },
+    });
+
+    runtime.setContentSize(4000);
+
+    expect(adapter.scrollToOffset).toHaveBeenCalledWith(1050, false);
+  });
+
+  it("открывает список как обычно, когда ключа стартовой позиции нет в данных", () => {
+    // Строку удалили между сохранением снимка и открытием. Ждать её нечего:
+    // список должен показаться сразу, как без стартовой позиции, а не через
+    // полторы секунды страховки.
+    const { store, adapter } = createRuntime(rows(40), {
+      initialScroll: { type: "key", key: "deleted" },
+    });
+
+    expect(adapter.scrollToOffset).not.toHaveBeenCalled();
+    expect(store.peek("readyToRender")).toBe(true);
+  });
+
+  it("ждёт данных, если ключ стартовой позиции ещё не мог появиться", () => {
+    // Пустые данные — это «ещё грузятся»: пришедшая следом страница может
+    // содержать ключ, и открыться нужно на нём.
+    const { store, runtime, adapter } = createRuntime([], {
+      initialScroll: { type: "key", key: "k10" },
+    });
+
+    runtime.setContentSize(0);
+    expect(store.peek("readyToRender")).toBe(false);
+
+    runtime.setProps(
+      createProps(rows(40), { initialScroll: { type: "key", key: "k10" } }),
+    );
+    runtime.setContentSize(4000);
+
+    expect(adapter.scrollToOffset).toHaveBeenCalledWith(1000, false);
+  });
+
+  it("снимает верхнюю строку и её смещение от кромки", () => {
+    const { runtime } = createRuntime();
+
+    runtime.setScroll(1050);
+
+    // Строка k10 начинается на 1000 и уходит за кромку на 50 точек.
+    expect(runtime.getScrollAnchor()).toEqual({ key: "k10", offset: -50 });
+  });
+
+  it("снимает смещение в координатах контента, вместе с шапкой", () => {
+    const { runtime } = createRuntime();
+
+    runtime.setHeaderSize(100);
+    runtime.setScroll(1050);
+
+    // Под шапкой в 100 точек на 1050 лежит k9 (позиция 1000 в контенте).
+    expect(runtime.getScrollAnchor()).toEqual({ key: "k9", offset: -50 });
+  });
+
+  it("не снимает якоря с пустого списка", () => {
+    const { runtime } = createRuntime([]);
+
+    expect(runtime.getScrollAnchor()).toBeUndefined();
+  });
+
+  it("возвращает список ровно туда, откуда снят якорь", () => {
+    const first = createRuntime();
+
+    first.runtime.setScroll(1234);
+
+    const anchor = first.runtime.getScrollAnchor()!;
+
+    // Между открытиями сверху подгрузилась история: индексы уехали.
+    const second = createRuntime([...rows(7, "h"), ...rows(40)], {
+      initialScroll: {
+        type: "key",
+        key: anchor.key,
+        viewOffset: anchor.offset,
+      },
+    });
+
+    second.runtime.setContentSize(4700);
+
+    expect(second.adapter.scrollToOffset).toHaveBeenCalledWith(1934, false);
+  });
+});
+
 describe("ListRuntime — прочее", () => {
   beforeEach(() => {
     jest.useFakeTimers();

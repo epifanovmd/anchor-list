@@ -1,6 +1,7 @@
 import type {
   AnchorListInitialScroll,
   IAnchorListRef,
+  IAnchorListScrollAnchor,
 } from "@epifanovmd/anchor-list";
 import {
   AnchorList,
@@ -11,7 +12,7 @@ import type { FC } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet } from "react-native";
 
-import type { ChatRowData, ISavedPosition } from "../data";
+import type { ChatRowData } from "../data";
 import {
   chatRowHeight,
   chatRowKey,
@@ -73,7 +74,7 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
   );
 
   // Читается ровно один раз: дальше позиция живёт в самом списке.
-  const [savedPosition] = useState<ISavedPosition | undefined>(() =>
+  const [savedPosition] = useState<IAnchorListScrollAnchor | undefined>(() =>
     positionStore.isRestoreEnabled()
       ? positionStore.read(SCREEN_ID)
       : undefined,
@@ -90,20 +91,21 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
    * при первом открытии. Без умолчания стенд открывался бы сверху, как обычный
    * список, и механику, ради которой он написан, было бы видно только со
    * второго захода.
+   *
+   * Снимок восстанавливается по ключу, а не по индексу: искать индекс по
+   * данным не нужно, а если строки уже нет, список сам откроется как обычно.
    */
-  const initialScroll = useMemo<AnchorListInitialScroll>(() => {
-    if (savedPosition) {
-      const index = data.findIndex(
-        row => chatRowKey(row) === savedPosition.key,
-      );
-
-      if (index !== -1) {
-        return { type: "index", index, viewOffset: savedPosition.offset };
-      }
-    }
-
-    return { type: "index", index: DEFAULT_START_INDEX };
-  }, [data, savedPosition]);
+  const initialScroll = useMemo<AnchorListInitialScroll>(
+    () =>
+      savedPosition
+        ? {
+            type: "key",
+            key: savedPosition.key,
+            viewOffset: savedPosition.offset,
+          }
+        : { type: "index", index: DEFAULT_START_INDEX },
+    [savedPosition],
+  );
 
   /**
    * Последний снятый снимок.
@@ -111,29 +113,18 @@ export const RestorePositionDemo: FC<IRestorePositionDemoProps> = ({
    * Копится в ref, а не пишется в хранилище сразу: писать на каждое движение
    * незачем, а к моменту ухода с экрана спросить список уже нельзя — см. ниже.
    */
-  const snapshot = useRef<ISavedPosition | undefined>(undefined);
+  const snapshot = useRef<IAnchorListScrollAnchor | undefined>(undefined);
 
   /**
-   * Снимок текущей позиции: верхняя видимая строка и её смещение относительно
+   * Снимок текущей позиции: строка у верхней кромки и её смещение относительно
    * кромки со знаком. Отрицательное смещение означает, что строка уходит за
    * кромку — именно оно возвращает её ровно тем же куском, каким она была.
    */
   const capturePosition = useCallback(() => {
-    const list = listRef.current;
+    const anchor = listRef.current?.getScrollAnchor();
 
-    if (!list) return;
-
-    const topRowIndex = list.getVisibleRange().start;
-    const position = list.getPositionAtIndex(topRowIndex);
-    const row = data[topRowIndex];
-
-    if (position === undefined || !row) return;
-
-    snapshot.current = {
-      key: chatRowKey(row),
-      offset: position - list.getScrollOffset(),
-    };
-  }, [data]);
+    if (anchor) snapshot.current = anchor;
+  }, []);
 
   /**
    * Снимок обновляется, пока экран жив, а в хранилище уходит при уходе с него.

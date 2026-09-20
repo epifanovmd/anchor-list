@@ -136,7 +136,14 @@ export interface IAnchorListAnchoredEndSpace {
   onSizeChanged?: (size: number) => void;
 }
 
-/** Стартовая позиция скролла. */
+/**
+ * Стартовая позиция скролла.
+ *
+ * `key` — то же, что `index`, но строка адресуется ключом: снимок позиции
+ * ({@link IAnchorListRef.getScrollAnchor}) переживает подгрузку истории и
+ * перезагрузку данных, а индекс — нет. Если ключа в данных нет, список
+ * открывается как без стартовой позиции; пока данные пусты, он ждёт их.
+ */
 export type AnchorListInitialScroll =
   | { type: "end" }
   | { type: "offset"; offset: number }
@@ -145,7 +152,27 @@ export type AnchorListInitialScroll =
       index: number;
       viewPosition?: number;
       viewOffset?: number;
+    }
+  | {
+      type: "key";
+      key: string;
+      viewPosition?: number;
+      viewOffset?: number;
     };
+
+/**
+ * Снимок позиции: строка у начальной кромки и её смещение относительно кромки.
+ *
+ * Отрицательное смещение означает, что строка уходит за кромку. Снимок
+ * передаётся обратно как `initialScroll: { type: "key", key, viewOffset: offset }`
+ * — список откроется ровно тем же куском той же строки.
+ */
+export interface IAnchorListScrollAnchor {
+  /** Ключ строки, пересекающей начальную кромку вьюпорта. */
+  key: string;
+  /** Смещение начала строки от кромки, px; отрицательное — уходит за неё. */
+  offset: number;
+}
 
 /**
  * Порог видимости элемента.
@@ -321,6 +348,14 @@ export interface IAnchorListRef {
   getPositionByKey: (key: string) => number | undefined;
   /** Индекс элемента по ключу; undefined — ключа нет в данных. */
   getIndexByKey: (key: string) => number | undefined;
+  /**
+   * Снимок позиции для восстановления: строка у начальной кромки и её смещение.
+   *
+   * Снимается по последнему обработанному событию скролла, поэтому брать его
+   * стоит, когда список стоит: в `onScrollEndDrag`, по смене видимого
+   * диапазона или при уходе с экрана. `undefined` — видимых строк нет.
+   */
+  getScrollAnchor: () => IAnchorListScrollAnchor | undefined;
   /** Текущий видимый диапазон и его буферизованные границы. */
   getVisibleRange: () => {
     start: number;

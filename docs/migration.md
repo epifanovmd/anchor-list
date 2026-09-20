@@ -42,7 +42,7 @@
 | `scrollToItem` | `scrollToKey({ key, ... })` — адресация ключом, а не поиском по элементу |
 | `flashScrollIndicators` | — |
 | `recordInteraction` | — |
-| — | `getPositionAtIndex`, `getSizeAtIndex`, `getPositionByKey`, `getIndexByKey`, `getVisibleRange`, `getScrollOffset`, `getContentSize`, `getScrollLength`, `getVelocity` |
+| — | `getPositionAtIndex`, `getSizeAtIndex`, `getPositionByKey`, `getIndexByKey`, `getScrollAnchor`, `getVisibleRange`, `getScrollOffset`, `getContentSize`, `getScrollLength`, `getVelocity` |
 
 ### Что делать вместо `inverted`
 

@@ -158,35 +158,21 @@ export const RestorableList = ({ data }: { data: ChatRow[] }) => {
   // Чтение синхронное и ровно одно: позиция нужна к первому кадру.
   const [saved] = useState(() => storage.read(SCREEN_ID));
 
-  const initialScroll = useMemo<AnchorListInitialScroll | undefined>(() => {
-    if (!saved) return undefined;
-
-    const index = data.findIndex(row => row.key === saved.key);
-
-    // Строки уже нет — открываемся как обычно.
-    if (index === -1) return undefined;
-
-    return { type: "index", index, viewOffset: saved.offset };
-  }, [data, saved]);
+  // Ключ, а не индекс: между сохранением и открытием данные могли пополниться
+  // сверху. Если строки уже нет, список сам откроется как обычно.
+  const initialScroll = useMemo<AnchorListInitialScroll | undefined>(
+    () =>
+      saved && { type: "key", key: saved.key, viewOffset: saved.offset },
+    [saved],
+  );
 
   const savePosition = useCallback(() => {
-    const list = listRef.current;
+    // Снимок со знаком: отрицательное смещение значит, что строка уходит за
+    // кромку, — именно оно вернёт её ровно тем же куском.
+    const anchor = listRef.current?.getScrollAnchor();
 
-    if (!list) return;
-
-    const topIndex = list.getVisibleRange().start;
-    const position = list.getPositionAtIndex(topIndex);
-    const row = data[topIndex];
-
-    if (position === undefined || !row) return;
-
-    // Смещение со знаком: отрицательное значит, что строка уходит за кромку, —
-    // именно оно вернёт её ровно тем же куском.
-    storage.write(SCREEN_ID, {
-      key: row.key,
-      offset: position - list.getScrollOffset(),
-    });
-  }, [data]);
+    if (anchor) storage.write(SCREEN_ID, anchor);
+  }, []);
 
   // Снимок при уходе с экрана. Видимость сообщает только о смене состава строк,
   // поэтому доводка скролла внутри той же строки в неё не попала бы.

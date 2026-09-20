@@ -190,6 +190,63 @@ describe("InitialOffsetResolver", () => {
     expect(resolver.resolve()).toBeUndefined();
   });
 
+  it("ставит элемент по ключу", () => {
+    const { resolver, state } = createResolver();
+
+    state.target = { type: "key", key: "k10" };
+
+    expect(resolver.resolve()).toBe(1000);
+  });
+
+  it("ставит элемент по ключу с тем же положением во вьюпорте, что и по индексу", () => {
+    const { resolver, state } = createResolver();
+
+    state.target = { type: "key", key: "k10", viewPosition: 1, viewOffset: 20 };
+
+    expect(resolver.resolve()).toBe(580);
+  });
+
+  it("находит ключ там, где он лежит сейчас, а не по прежнему индексу", () => {
+    // Снимок позиции хранит ключ. Между сохранением и открытием данные могли
+    // пополниться сверху — индекс той же строки другой, ключ прежний.
+    const { metrics, resolver, state } = createResolver();
+    const keys = ["h0", "h1", ...Array.from({ length: 20 }, (_, i) => `k${i}`)];
+
+    metrics.setItems(
+      keys,
+      keys.map(() => ""),
+    );
+    state.target = { type: "key", key: "k10" };
+
+    expect(resolver.resolve()).toBe(1200);
+  });
+
+  it("не знает цели для ключа, которого нет в данных", () => {
+    const { resolver, state } = createResolver();
+
+    state.target = { type: "key", key: "missing" };
+
+    expect(resolver.resolve()).toBeUndefined();
+  });
+
+  it("считает цель по ключу потерянной, только когда данные уже есть", () => {
+    // Пустые данные — это «ещё не загрузились», а не «строки нет»: цель ждёт.
+    // Данные пришли, а ключа в них нет — строка удалена, ждать нечего.
+    const { metrics, resolver, state } = createResolver(0);
+
+    state.target = { type: "key", key: "k10" };
+    expect(resolver.isTargetMissing()).toBe(false);
+
+    metrics.setItems(["k0", "k1"], ["", ""]);
+    expect(resolver.isTargetMissing()).toBe(true);
+
+    metrics.setItems(["k0", "k10"], ["", ""]);
+    expect(resolver.isTargetMissing()).toBe(false);
+
+    state.target = { type: "index", index: 50 };
+    expect(resolver.isTargetMissing()).toBe(false);
+  });
+
   it("считает цель устаканившейся, когда она перестала уезжать", () => {
     const { metrics, resolver, state } = createResolver();
 
