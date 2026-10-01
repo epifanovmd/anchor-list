@@ -869,6 +869,25 @@ describe("ListRuntime — кромки и скролл", () => {
     expect(seen).toEqual([1000, live, live, live, live]);
   });
 
+  /**
+   * Жалоба: лента грузит первую страницу асинхронно; страница короткая, а
+   * подгрузка следующей не уходит, пока список не потянуть.
+   *
+   * Пока данных нет, список стоит у начала, и начальная кромка «срабатывает» —
+   * хотя `onStartReached` у ленты нет. Сработав, она закрывала общий гейт, и
+   * конец, вошедший в зону с первой страницей, гейт уже не пропускал.
+   */
+  it("кромка без обработчика не держит гейт для другой", () => {
+    const onEndReached = jest.fn();
+    const { runtime } = createRuntime([], { onEndReached });
+
+    // Шапка измерилась, пока данных нет: пороги проверяются у начала списка.
+    runtime.setHeaderSize(60);
+    runtime.setProps(createProps(rows(2), { onEndReached }));
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
   it("не вызывает подгрузку во время программного скролла", () => {
     const onEndReached = jest.fn();
     const { runtime } = createRuntime(rows(40), { onEndReached });

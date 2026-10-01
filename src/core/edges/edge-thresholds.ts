@@ -162,6 +162,10 @@ export class EdgeThresholds {
       return;
     }
 
+    // Кромка без обработчика в гейте не участвует: сработав «впустую», она
+    // закрыла бы его для той, которую ждут, — см. {@link EdgeGate}.
+    if (!this.options.onEndReached) return;
+
     this.endLatch.evaluate(
       geometry.distanceFromEnd,
       geometry.isContentShorter,
@@ -217,6 +221,8 @@ export class EdgeThresholds {
 
       return;
     }
+
+    if (!this.options.onStartReached) return;
 
     this.startLatch.evaluate(
       geometry.distanceFromStart,
