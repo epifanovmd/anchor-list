@@ -81,9 +81,9 @@ const shadowStyle = useAnimatedStyle(() => ({
 | `maxScroll` | `number` | Граница скролла: `contentSize - scrollLength`, но не меньше нуля |
 | `scrollLength` | `number` | Размер вьюпорта вдоль оси скролла |
 | `scrollSize` | `{ width, height }` | Размер вьюпорта целиком |
-| `headerSize` | `number` | Размер шапки вдоль оси |
+| `headerSize` | `number` | Размер шапки вдоль оси, вместе с зазором до строк (`headerGap`) |
 | `contentOrigin` | `number` | Начало строк в координатах контента: отступ контейнера контента плюс шапка |
-| `footerSize` | `number` | Размер подвала вдоль оси |
+| `footerSize` | `number` | Размер подвала вдоль оси, вместе с зазором от строк (`footerGap`) |
 | `anchoredEndSpaceSize` | `number` | Распорка у конца |
 
 Прогресс прокрутки — `scrollOffset / maxScroll`:

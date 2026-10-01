@@ -21,3 +21,39 @@ export const renderListSlot = (slot: ListSlot): ReactNode => {
 
   return createElement(slot as ComponentType<unknown>);
 };
+
+/** Что известно о слотах, когда решается, где лежат зазоры. */
+export interface ISlotGapsParams {
+  /** Зазор между строками. */
+  gap?: number;
+  /** Свой зазор после шапки; по умолчанию — `gap`. */
+  headerGap?: number;
+  /** Свой зазор перед подвалом; по умолчанию — `gap`. */
+  footerGap?: number;
+  /** Шапка отрисована. */
+  hasHeader: boolean;
+  /** Подвал отрисован. */
+  hasFooter: boolean;
+  /** Есть строки: без них зазору не между чем лежать. */
+  hasItems: boolean;
+}
+
+/**
+ * Зазоры между шапкой, строками и подвалом.
+ *
+ * Как `gap` во flexbox: между соседями, которые есть. Шапка и подвал — такие
+ * же соседи строк, как строки друг другу, поэтому по умолчанию зазор тот же.
+ * Пустой список зазора не получает: отступ внутри шапки, которым его
+ * заменяли раньше, оставался и над заглушкой.
+ */
+export const resolveSlotGaps = ({
+  gap = 0,
+  headerGap,
+  footerGap,
+  hasHeader,
+  hasFooter,
+  hasItems,
+}: ISlotGapsParams): { header: number; footer: number } => ({
+  header: hasItems && hasHeader ? (headerGap ?? gap) : 0,
+  footer: hasItems && hasFooter ? (footerGap ?? gap) : 0,
+});

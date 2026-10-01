@@ -314,12 +314,14 @@ export interface IAnchorListSharedValues {
   scrollLength?: SharedValue<number>;
   /** Размер вьюпорта целиком. */
   scrollSize?: SharedValue<IAnchorListScrollSize>;
+  /** Размер шапки вдоль оси, вместе с зазором до строк (`headerGap`). */
   headerSize?: SharedValue<number>;
   /**
    * Начало строк в координатах контента: отступ контейнера контента плюс
    * шапка.
    */
   contentOrigin?: SharedValue<number>;
+  /** Размер подвала вдоль оси, вместе с зазором от строк (`footerGap`). */
   footerSize?: SharedValue<number>;
   /** Распорка у конца, поднимающая якорный элемент к верхней кромке. */
   anchoredEndSpaceSize?: SharedValue<number>;
@@ -510,6 +512,22 @@ export interface IAnchorListProps<TItem> {
    * данных; у первой строки не применяется.
    */
   getItemGap?: (item: TItem, index: number) => number;
+  /**
+   * Зазор между шапкой и первой строкой, px; по умолчанию — `gap`.
+   *
+   * Шапка — такой же сосед строк, как строки друг другу, поэтому зазор по
+   * умолчанию тот же, что между строками (как у `gap` во flexbox). Кладётся
+   * только когда есть и шапка, и строки: над заглушкой пустого списка его нет.
+   * Входит в замер шапки — `headerSize`.
+   */
+  headerGap?: number;
+  /**
+   * Зазор между последней строкой и подвалом, px; по умолчанию — `gap`.
+   *
+   * Как {@link IAnchorListProps.headerGap}: только когда есть и строки, и
+   * подвал; входит в замер подвала — `footerSize`.
+   */
+  footerGap?: number;
   /** Переиспользовать смонтированные контейнеры вместо перемонтирования. */
   recycleItems?: boolean;
   /**

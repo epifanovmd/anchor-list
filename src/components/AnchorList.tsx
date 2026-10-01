@@ -35,8 +35,13 @@ import type {
   IAnchorListRenderItemProps,
   IAnchorListStickyConfig,
 } from "../types";
-import { getAxisContentStyle, getAxisPosition, getAxisSize } from "./axis";
-import { renderListSlot } from "./list-slots";
+import {
+  getAxisContentStyle,
+  getAxisGapStyle,
+  getAxisPosition,
+  getAxisSize,
+} from "./axis";
+import { renderListSlot, resolveSlotGaps } from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
 import { ListInsetEndSpace } from "./ListInsetEndSpace";
@@ -87,7 +92,7 @@ let rtlWarned = false;
  * распорками и подвалом, — и строки уезжают от шапки на величину, которой
  * список не видит: начало координат строк он берёт по концу шапки. Диапазон,
  * прилипание и переход к строке промахиваются ровно на неё. Зазор между
- * строками задаётся пропом `gap`.
+ * строками и вокруг шапки задаётся пропами `gap`, `headerGap`, `footerGap`.
  */
 let contentGapWarned = false;
 
@@ -111,6 +116,9 @@ const AnchorListInner = <TItem,>(
     ListFooterComponent,
     ListEmptyComponent,
     ItemSeparatorComponent,
+    gap,
+    headerGap,
+    footerGap,
     horizontal = false,
     style,
     contentContainerStyle,
@@ -177,7 +185,7 @@ const AnchorListInner = <TItem,>(
     console.warn(
       "AnchorList: gap в contentContainerStyle не поддерживается — список не " +
         "видит его в раскладке, и строки смещаются относительно расчёта. " +
-        "Используйте проп gap. См. docs/props.md.",
+        "Используйте пропы gap, headerGap и footerGap. См. docs/props.md.",
     );
   }, [contentContainerStyle]);
 
@@ -472,6 +480,31 @@ const AnchorListInner = <TItem,>(
     props: IAnchorListRenderItemProps<unknown>,
   ) => React.ReactNode;
 
+  const header = renderListSlot(ListHeaderComponent);
+  const footer = renderListSlot(ListFooterComponent);
+  const slotGaps = resolveSlotGaps({
+    gap,
+    headerGap,
+    footerGap,
+    hasHeader: header !== null,
+    hasFooter: footer !== null,
+    hasItems: data.length > 0,
+  });
+  const headerStyle = useMemo(
+    () => [
+      getAxisContentStyle(horizontal),
+      getAxisGapStyle(slotGaps.header, "end", horizontal),
+    ],
+    [horizontal, slotGaps.header],
+  );
+  const footerStyle = useMemo(
+    () => [
+      getAxisContentStyle(horizontal),
+      getAxisGapStyle(slotGaps.footer, "start", horizontal),
+    ],
+    [horizontal, slotGaps.footer],
+  );
+
   const scrollView = (
     <Animated.ScrollView
       ref={scrollRef}
@@ -500,11 +533,8 @@ const AnchorListInner = <TItem,>(
       {/* Обёртка раскладывается вдоль оси по той же причине, что и слот
           строки: иначе поперечный размер до содержимого не доходит, и
           шапка горизонтального списка не занимает высоту ленты. */}
-      <View
-        style={getAxisContentStyle(horizontal)}
-        onLayout={handleHeaderLayout}
-      >
-        {renderListSlot(ListHeaderComponent)}
+      <View style={headerStyle} onLayout={handleHeaderLayout}>
+        {header}
       </View>
 
       {data.length === 0 ? (
@@ -520,11 +550,8 @@ const AnchorListInner = <TItem,>(
 
       <ListAnchoredEndSpace />
 
-      <View
-        style={getAxisContentStyle(horizontal)}
-        onLayout={handleFooterLayout}
-      >
-        {renderListSlot(ListFooterComponent)}
+      <View style={footerStyle} onLayout={handleFooterLayout}>
+        {footer}
       </View>
 
       {insetEnd ? <ListInsetEndSpace size={insetEndLayout.spacer} /> : null}

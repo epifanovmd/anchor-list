@@ -1,6 +1,7 @@
 import {
   getAxisAnchorStyle,
   getAxisContentStyle,
+  getAxisGapStyle,
   getAxisLengthStyle,
   getAxisPinStyle,
   getAxisPosition,
@@ -210,5 +211,21 @@ describe("getAxisPosition", () => {
 
   it("горизонтальный — по x", () => {
     expect(getAxisPosition(16, 24, true)).toBe(16);
+  });
+});
+
+describe("getAxisGapStyle", () => {
+  it("зазор после слота — отступ у его конца по оси", () => {
+    expect(getAxisGapStyle(8, "end", false)).toEqual({ paddingBottom: 8 });
+    expect(getAxisGapStyle(8, "end", true)).toEqual({ paddingRight: 8 });
+  });
+
+  it("зазор перед слотом — отступ у его начала", () => {
+    expect(getAxisGapStyle(8, "start", false)).toEqual({ paddingTop: 8 });
+    expect(getAxisGapStyle(8, "start", true)).toEqual({ paddingLeft: 8 });
+  });
+
+  it("без зазора стиля нет", () => {
+    expect(getAxisGapStyle(0, "end", false)).toBeUndefined();
   });
 });

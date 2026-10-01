@@ -47,6 +47,30 @@ export const getAxisPosition = (
   horizontal: boolean,
 ): number => (horizontal ? x : y);
 
+/**
+ * Зазор между слотом и строками — отступом внутри обёртки слота.
+ *
+ * Внутри, а не внешним полем: обёртка меряется, и зазор входит в её замер.
+ * Тогда конец шапки — это ровно начало строк, а подвал со своим зазором
+ * складывается в высоту контента без отдельной поправки.
+ *
+ * @param side с какой стороны слота зазор: `end` — после него (шапка),
+ * `start` — перед ним (подвал).
+ */
+export const getAxisGapStyle = (
+  gap: number,
+  side: "start" | "end",
+  horizontal: boolean,
+): ViewStyle | undefined => {
+  if (gap === 0) return undefined;
+
+  if (horizontal) {
+    return side === "start" ? { paddingLeft: gap } : { paddingRight: gap };
+  }
+
+  return side === "start" ? { paddingTop: gap } : { paddingBottom: gap };
+};
+
 /** Геометрия слота одной строки. */
 export interface IAxisSlot {
   /** Позиция строки вдоль оси скролла, в координатах элементов. */
