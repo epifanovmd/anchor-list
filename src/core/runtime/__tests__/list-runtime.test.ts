@@ -888,6 +888,60 @@ describe("ListRuntime — кромки и скролл", () => {
     expect(onEndReached).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * Жалоба: короткий список, открытый сразу с данными, не просит следующую
+   * страницу, пока его не тронуть.
+   *
+   * Пока доводится стартовая позиция, пороги молчат, а когда она кончилась —
+   * их никто не перепроверял: следующая проверка ждала события скролла.
+   */
+  it("проверяет кромки, когда стартовая позиция доведена", () => {
+    const onEndReached = jest.fn();
+
+    createRuntime(rows(2), { onEndReached });
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Жалоба: срабатывание пришлось на момент, когда потребитель был занят, и
+   * подгрузка пропала; данные потом сменились, а список так и стоит у конца.
+   */
+  it("повторяет подгрузку, когда данные сменились, а конец всё ещё рядом", () => {
+    const onEndReached = jest.fn();
+    const { runtime } = createRuntime(rows(2), { onEndReached });
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    runtime.setProps(createProps(rows(3), { onEndReached }));
+
+    expect(onEndReached).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Жалоба: короткая первая страница не догружается без жеста.
+   *
+   * Пока данных не было, высокая заглушка пустого списка ушла в замер контента
+   * как его «шапка и подвал». Пришла первая страница — список считает её
+   * высоту вместе с той заглушкой и решает, что до конца далеко. Нативный замер
+   * следом исправляет высоту, но пороги по нему не перепроверялись: до
+   * следующего жеста подгрузки не было.
+   */
+  it("перепроверяет кромки, когда нативный замер уточнил высоту контента", () => {
+    const onEndReached = jest.fn();
+    const { runtime } = createRuntime([], { onEndReached });
+
+    // Пустой список с заглушкой на 600.
+    runtime.setContentSize(600);
+    runtime.setProps(createProps(rows(2), { onEndReached }));
+    onEndReached.mockClear();
+
+    // Заглушка ушла: контент — две строки, экран не заполнен.
+    runtime.setContentSize(200);
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
   it("не вызывает подгрузку во время программного скролла", () => {
     const onEndReached = jest.fn();
     const { runtime } = createRuntime(rows(40), { onEndReached });
@@ -1023,6 +1077,10 @@ describe("ListRuntime — кромки и скролл", () => {
   it("разблокирует кромку по направлению жеста", () => {
     const onStartReached = jest.fn();
     const { runtime } = createRuntime(rows(40), { onStartReached });
+
+    // Список открылся у начала — кромка сработала сразу после показа.
+    expect(onStartReached).toHaveBeenCalledTimes(1);
+    onStartReached.mockClear();
 
     // Первый вход в зону начала закрывает общий гейт.
     runtime.setScroll(2000);
