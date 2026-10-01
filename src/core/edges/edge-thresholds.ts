@@ -167,8 +167,8 @@ export class EdgeThresholds {
       geometry.isContentShorter,
       thresholds.endThreshold,
       { contentSize: context.contentSize, dataLength: context.dataLength },
-      distance => {
-        if (!this.gate.canDispatch("end", allowedEdge, gateWasOpen)) {
+      (distance, repeat) => {
+        if (!this.gate.canDispatch("end", allowedEdge, gateWasOpen, repeat)) {
           logEdgesBlocked({
             edge: "end",
             distance,
@@ -179,7 +179,7 @@ export class EdgeThresholds {
           return;
         }
 
-        this.gate.close();
+        this.gate.close("end");
         logEdgesReached({
           edge: "end",
           distance,
@@ -188,6 +188,9 @@ export class EdgeThresholds {
         });
         this.options.onEndReached?.({ distanceFromEnd: distance });
       },
+      // Подгрузка в конец уводит от кромки сама — на длину порции. Остались у
+      // кромки — значит порции не хватило, или её не было вовсе.
+      true,
     );
   }
 
@@ -220,8 +223,8 @@ export class EdgeThresholds {
       false,
       startThreshold,
       { contentSize: context.contentSize, dataLength: context.dataLength },
-      distance => {
-        if (!this.gate.canDispatch("start", allowedEdge, gateWasOpen)) {
+      (distance, repeat) => {
+        if (!this.gate.canDispatch("start", allowedEdge, gateWasOpen, repeat)) {
           logEdgesBlocked({
             edge: "start",
             distance,
@@ -232,7 +235,7 @@ export class EdgeThresholds {
           return;
         }
 
-        this.gate.close();
+        this.gate.close("start");
         logEdgesReached({
           edge: "start",
           distance,
@@ -241,6 +244,13 @@ export class EdgeThresholds {
         });
         this.options.onStartReached?.({ distanceFromStart: distance });
       },
+      // У начала — только пока контент короче экрана. Подгрузка сверху без
+      // удержания позиции от кромки не уводит, и повтор на длинном списке
+      // выгрузил бы историю целиком подряд; с удержанием позицию сдвигает сама
+      // вставка, и новый вход ловит {@link resetStartLatchIfContentGrew}.
+      // Короткий же контент не прокручивается, и жеста, который снял бы
+      // защёлку, может не быть вовсе.
+      geometry.isContentShorter,
     );
   }
 

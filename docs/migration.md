@@ -17,7 +17,7 @@
 | `ListEmptyComponent` | `ListEmptyComponent` | — |
 | `ItemSeparatorComponent` | `ItemSeparatorComponent` | **Рисуется внутри ячейки и входит в её высоту** |
 | `contentContainerStyle={{ gap }}` | `gap`, `getItemGap` | Зазор знает список: он между слотами, а не в них — [почему](rendering.md#отступы-и-зазоры) |
-| `onEndReached` | `onEndReached` | Один раз на жест; получает `{ distanceFromEnd }` |
+| `onEndReached` | `onEndReached` | Один раз на вход в зону; повтор — на жесте и на смене данных у конца, как у `FlatList` по смене длины контента; получает `{ distanceFromEnd }` |
 | `onEndReachedThreshold` | `onEndReachedThreshold` | Та же семантика — доли вьюпорта |
 | — | `onStartReached` / `onStartReachedThreshold` | Есть симметричный порог у начала |
 | `onViewableItemsChanged` + `viewabilityConfig` | `viewabilityPairs` | Один массив пар вместо двух пропов; наборов может быть несколько |

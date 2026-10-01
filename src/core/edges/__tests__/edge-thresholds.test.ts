@@ -109,6 +109,79 @@ describe("EdgeThresholds — конец списка", () => {
   });
 });
 
+describe("EdgeThresholds — повтор у кромки после изменения", () => {
+  /**
+   * Жалоба: первая страница не заполнила экран, подгрузка ушла один раз —
+   * вторая порция пришла, а до конца по-прежнему близко, и третьей нет, пока
+   * пользователь не потянет список. Тянуть короткий список часто нечем: он не
+   * прокручивается.
+   */
+  it("повторяет конец, когда подгрузка пришла, а до конца по-прежнему близко", () => {
+    const { edges, onEndReached } = createThresholds();
+
+    edges.check(context(0, { contentSize: 200, dataLength: 2 }));
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    edges.check(context(0, { contentSize: 400, dataLength: 4 }));
+
+    expect(onEndReached).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Жалоба: в момент срабатывания потребитель был занят (идёт обновление) и
+   * подгрузку пропустил. Обновление закончилось, данные сменились, список всё
+   * ещё у кромки — а повтора нет до следующего жеста.
+   */
+  it("повторяет конец после смены данных, даже если первое срабатывание пропало", () => {
+    const { edges, onEndReached } = createThresholds();
+    const atEnd = scrollForDistanceFromEnd(100);
+
+    edges.check(context(atEnd));
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    edges.check(
+      context(atEnd + 300, { contentSize: CONTENT_SIZE + 300, dataLength: 53 }),
+    );
+
+    expect(onEndReached).toHaveBeenCalledTimes(2);
+  });
+
+  it("не повторяет конец, пока ничего не изменилось", () => {
+    const { edges, onEndReached } = createThresholds();
+
+    edges.check(context(0, { contentSize: 200, dataLength: 2 }));
+    edges.check(context(0, { contentSize: 200, dataLength: 2 }));
+    edges.check(context(0, { contentSize: 200, dataLength: 2 }));
+
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+
+  it("повторяет начало у короткого контента, который вырос", () => {
+    const { edges, onStartReached } = createThresholds();
+
+    // Короткая история: экран не заполнен, тянуть нечего.
+    edges.check(context(0, { contentSize: 200, dataLength: 2 }));
+    expect(onStartReached).toHaveBeenCalledTimes(1);
+
+    edges.check(context(0, { contentSize: 400, dataLength: 4 }));
+
+    expect(onStartReached).toHaveBeenCalledTimes(2);
+  });
+
+  it("не разблокирует повтором кромку, которая ещё не срабатывала", () => {
+    const { edges, onStartReached, onEndReached } = createThresholds();
+
+    // Сработал только конец: начало за порогом.
+    edges.check(context(scrollForDistanceFromEnd(100)));
+    expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    // Ушли к началу в том же жесте — гейт держит его, повтор тут ни при чём.
+    edges.check(context(100, { contentSize: CONTENT_SIZE + 300 }));
+
+    expect(onStartReached).not.toHaveBeenCalled();
+  });
+});
+
 describe("EdgeThresholds — начало списка", () => {
   it("вызывает начало один раз на вход в зону", () => {
     const { edges, onStartReached } = createThresholds();

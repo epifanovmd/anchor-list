@@ -25,7 +25,7 @@ describe("EdgeLatch", () => {
     const onReached = jest.fn();
 
     latch.evaluate(200, false, 250, CONTEXT, onReached);
-    expect(onReached).toHaveBeenCalledWith(200);
+    expect(onReached).toHaveBeenCalledWith(200, false);
 
     // Событий скролла в зоне десятки в секунду — сеть на такое не рассчитана.
     latch.evaluate(150, false, 250, CONTEXT, onReached);
@@ -99,6 +99,34 @@ describe("EdgeLatch", () => {
       contentSize: 7000,
       dataLength: 70,
     });
+  });
+
+  it("повторяет срабатывание, когда список изменился, если просили", () => {
+    const latch = new EdgeLatch();
+    const onReached = jest.fn();
+
+    latch.evaluate(100, false, 250, CONTEXT, onReached, true);
+    latch.evaluate(
+      120,
+      false,
+      250,
+      { contentSize: 7000, dataLength: 70 },
+      onReached,
+      true,
+    );
+
+    expect(onReached).toHaveBeenCalledTimes(2);
+    expect(onReached).toHaveBeenLastCalledWith(120, true);
+  });
+
+  it("не повторяет, пока список тот же, даже если просили", () => {
+    const latch = new EdgeLatch();
+    const onReached = jest.fn();
+
+    latch.evaluate(100, false, 250, CONTEXT, onReached, true);
+    latch.evaluate(120, false, 250, CONTEXT, onReached, true);
+
+    expect(onReached).toHaveBeenCalledTimes(1);
   });
 
   it("не трогает снимок, пока список тот же", () => {

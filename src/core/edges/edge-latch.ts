@@ -24,8 +24,10 @@ export interface IEdgeLatchContext {
  * - снимается только после выхода за порог с запасом — дрожание у самой границы
  *   не считается новым входом;
  * - но срабатывает повторно, не дожидаясь выхода, если список реально
- *   изменился: подгруженная порция пришла, а до кромки по-прежнему близко —
- *   значит нужна следующая.
+ *   изменился (`repeatOnChange`): подгруженная порция пришла, а до кромки
+ *   по-прежнему близко — значит нужна следующая. Без этого короткая страница,
+ *   не заполнившая экран, не догружалась без жеста, а срабатывание, которое
+ *   потребитель пропустил (был занят), не повторялось вовсе.
  */
 export class EdgeLatch {
   private reached = false;
@@ -53,14 +55,20 @@ export class EdgeLatch {
    * @param distance расстояние до кромки.
    * @param atEdge кромка достигнута точно — порог тут ни при чём.
    * @param threshold порог в пикселях; 0 отключает кромку.
-   * @param onReached вызывается ровно на переходах, а не на каждой проверке.
+   * @param onReached вызывается ровно на переходах, а не на каждой проверке;
+   * `repeat` — повтор по изменению списка, а не вход в зону.
+   * @param repeatOnChange повторять срабатывание, когда список изменился, а
+   * кромка по-прежнему в зоне. Решает вызывающий: у начала без удержания
+   * позиции подгрузка сверху не уводит от кромки, и повтор там шёл бы до
+   * конца истории подряд.
    */
   evaluate(
     distance: number,
     atEdge: boolean,
     threshold: number,
     context: IEdgeLatchContext,
-    onReached: (distance: number) => void,
+    onReached: (distance: number, repeat: boolean) => void,
+    repeatOnChange = false,
   ): void {
     const within = atEdge || (threshold > 0 && Math.abs(distance) <= threshold);
     const snapshot: IEdgeSnapshot = { atEdge, ...context };
@@ -68,7 +76,7 @@ export class EdgeLatch {
     if (!this.reached) {
       if (!within) return;
 
-      onReached(distance);
+      onReached(distance, false);
       this.reached = true;
       this.snapshot = snapshot;
 
@@ -90,9 +98,12 @@ export class EdgeLatch {
       previous.contentSize !== context.contentSize ||
       previous.dataLength !== context.dataLength;
 
-    if (changed) {
-      this.reached = true;
-      this.snapshot = snapshot;
-    }
+    if (!changed) return;
+
+    // Снимок обновляется и без повтора: иначе следующая проверка сочла бы
+    // список изменившимся ещё раз.
+    this.snapshot = snapshot;
+
+    if (repeatOnChange) onReached(distance, true);
   }
 }

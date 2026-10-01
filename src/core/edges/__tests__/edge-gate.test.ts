@@ -113,4 +113,25 @@ describe("EdgeGate — право на колбэк", () => {
 
     expect(gate.canDispatch("start", undefined, false)).toBe(false);
   });
+
+  it("пропускает повтор кромки, которая уже сработала", () => {
+    const gate = new EdgeGate();
+
+    gate.close("end");
+
+    expect(gate.canDispatch("end", undefined, false, true)).toBe(true);
+    // Повтор — не вход: вторую кромку гейт держит по-прежнему.
+    expect(gate.canDispatch("start", undefined, false, true)).toBe(false);
+    expect(gate.canDispatch("end", undefined, false)).toBe(false);
+  });
+
+  it("забывает сработавшие кромки на новом жесте", () => {
+    const gate = new EdgeGate();
+
+    gate.close("end");
+    gate.prepareForNextGesture();
+    gate.beginGesture(-1);
+
+    expect(gate.canDispatch("end", "start", false, true)).toBe(false);
+  });
 });
