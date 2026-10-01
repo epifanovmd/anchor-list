@@ -1,5 +1,10 @@
 import type { ComponentType, ReactElement, ReactNode } from "react";
-import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
+import type {
+  LayoutChangeEvent,
+  NativeScrollEvent,
+  StyleProp,
+  ViewStyle,
+} from "react-native";
 import type Animated from "react-native-reanimated";
 import type { AnimatedRef, SharedValue } from "react-native-reanimated";
 
@@ -249,6 +254,22 @@ export interface IAnchorListViewabilityPair<TItem> {
   onViewableItemsChanged: (
     info: IAnchorListViewabilityCallbackInfo<TItem>,
   ) => void;
+}
+
+/**
+ * Worklet-обработчики фаз скролла вызывающего.
+ *
+ * Получают нативное событие каждым кадром и как есть — с резинкой за кромкой,
+ * без шага и зажима, — после того как список записал своё. Нужны тем, кому
+ * мало `sharedValues`: телеметрии экрана, pull-to-refresh, синхронизации баров.
+ * Каждый обработчик обязан быть worklet-ом.
+ */
+export interface IAnchorListScrollHandlers {
+  onScroll?: (event: NativeScrollEvent) => void;
+  onBeginDrag?: (event: NativeScrollEvent) => void;
+  onEndDrag?: (event: NativeScrollEvent) => void;
+  onMomentumBegin?: (event: NativeScrollEvent) => void;
+  onMomentumEnd?: (event: NativeScrollEvent) => void;
 }
 
 /**
@@ -648,6 +669,28 @@ export interface IAnchorListProps<TItem> {
   onScrollBeginDrag?: () => void;
   /** Палец отпущен; дальше возможна инерция. */
   onScrollEndDrag?: () => void;
+
+  /**
+   * Оттяжка за кромку (iOS), по умолчанию `false`.
+   *
+   * Включается под pull-to-refresh и прочие эффекты резинки. Расчёт списка
+   * её не видит: в JS смещение уходит зажатым в пределы контента, а прилипание
+   * и `sharedValues.scrollOffset` получают его как есть и едут вместе с
+   * контентом.
+   */
+  bounces?: boolean;
+  /** Worklet-обработчики фаз скролла; см. {@link IAnchorListScrollHandlers}. */
+  scrollHandlers?: IAnchorListScrollHandlers;
+  /**
+   * Обёртка вокруг внутреннего `ScrollView`.
+   *
+   * Получает готовый элемент и обязана вернуть его ровно один раз — например
+   * внутри `GestureDetector`, когда жест должен работать одновременно с
+   * нативным жестом самого `ScrollView` (pull-to-refresh на Android). Обёртка
+   * над всем списком так не может: детектор цепляется к своему прямому
+   * ребёнку, а это была бы внешняя `View`, а не скролл.
+   */
+  renderScrollView?: (scrollView: ReactElement) => ReactElement;
 
   /** Стиль обёртки списка: сюда идут размеры и фон. */
   style?: StyleProp<ViewStyle>;

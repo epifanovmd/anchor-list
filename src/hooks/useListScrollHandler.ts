@@ -1,9 +1,12 @@
+import type { NativeScrollEvent } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 import {
   useAnimatedScrollHandler,
   useSharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
+
+import type { IAnchorListScrollHandlers } from "../types";
 
 /**
  * Шаг, с которым пересчёт диапазона уходит в JS, по умолчанию, px.
@@ -83,7 +86,32 @@ export interface IAnchorListScrollHandlerOptions {
   onBeginDrag: () => void;
   onEndDrag: () => void;
   onMomentumEnd: () => void;
+  /** Обработчики вызывающего: получают каждое событие как есть, после своих. */
+  externalHandlers?: IAnchorListScrollHandlers;
 }
+
+/**
+ * Смещение для расчёта в JS: в пределах контента.
+ *
+ * Зачем нужно: с `bounces` нативный слой тянет контент за кромку, и смещение
+ * уходит в минус у начала и за границу у конца. Это резинка, а не позиция —
+ * диапазон, компенсация и пороги кромок считаются от того места, где контент
+ * остановится. Без зажима каждый кадр оттяжки ещё и уходил бы в JS: у кромки
+ * шаг не применяется.
+ */
+const getReportedOffset = (
+  event: NativeScrollEvent,
+  horizontal: boolean,
+): number => {
+  "worklet";
+
+  const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
+  const maxScroll = horizontal
+    ? event.contentSize.width - event.layoutMeasurement.width
+    : event.contentSize.height - event.layoutMeasurement.height;
+
+  return Math.max(0, Math.min(offset, Math.max(0, maxScroll)));
+};
 
 /**
  * Обработка скролла одним worklet-обработчиком.
@@ -114,6 +142,7 @@ export const useListScrollHandler = ({
   onBeginDrag,
   onEndDrag,
   onMomentumEnd,
+  externalHandlers,
 }: IAnchorListScrollHandlerOptions) => {
   /** Смещение, при котором в JS уходил последний пересчёт диапазона. */
   const lastReportedScroll = useSharedValue(0);
@@ -122,12 +151,15 @@ export const useListScrollHandler = ({
     onScroll: event => {
       const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
 
-      // До проверки шага: наружу смещение обязано идти каждым кадром, а шаг
-      // ограничивает только пересчёт диапазона.
+      // До проверки шага и без зажима: наружу и прилипанию смещение обязано
+      // идти каждым кадром и таким, какое оно есть, вместе с резинкой.
       scrollOffset.value = offset;
       if (publishedScrollOffset) publishedScrollOffset.value = offset;
+      externalHandlers?.onScroll?.(event);
 
-      if (offset === lastReportedScroll.value) return;
+      const reported = getReportedOffset(event, horizontal);
+
+      if (reported === lastReportedScroll.value) return;
 
       // Границы берутся из самого события: размеры контента и вьюпорта
       // приходят вместе со смещением, и спрашивать их у JS не нужно.
@@ -135,28 +167,30 @@ export const useListScrollHandler = ({
         ? event.contentSize.width - event.layoutMeasurement.width
         : event.contentSize.height - event.layoutMeasurement.height;
       const atEdge =
-        offset <= EDGE_REPORT_PX || offset >= maxScroll - EDGE_REPORT_PX;
+        reported <= EDGE_REPORT_PX || reported >= maxScroll - EDGE_REPORT_PX;
 
       if (
         !atEdge &&
-        Math.abs(offset - lastReportedScroll.value) < scrollThrottleDistance
+        Math.abs(reported - lastReportedScroll.value) < scrollThrottleDistance
       )
         return;
 
-      lastReportedScroll.value = offset;
-      scheduleOnRN(onScroll, offset, Date.now());
+      lastReportedScroll.value = reported;
+      scheduleOnRN(onScroll, reported, Date.now());
     },
-    onBeginDrag: () => {
+    onBeginDrag: event => {
       isDragging.value = true;
       if (publishedIsDragging) publishedIsDragging.value = true;
+      externalHandlers?.onBeginDrag?.(event);
 
       scheduleOnRN(onBeginDrag);
     },
     onEndDrag: event => {
       isDragging.value = false;
       if (publishedIsDragging) publishedIsDragging.value = false;
+      externalHandlers?.onEndDrag?.(event);
 
-      const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
+      const offset = getReportedOffset(event, horizontal);
 
       if (offset !== lastReportedScroll.value) {
         lastReportedScroll.value = offset;
@@ -167,15 +201,17 @@ export const useListScrollHandler = ({
     },
     // Инерция начинается только после отпускания пальца, и только если бросок
     // был: короткое перетаскивание завершается на `onEndDrag` без неё.
-    onMomentumBegin: () => {
+    onMomentumBegin: event => {
       isMomentum.value = true;
       if (publishedIsMomentum) publishedIsMomentum.value = true;
+      externalHandlers?.onMomentumBegin?.(event);
     },
     onMomentumEnd: event => {
       isMomentum.value = false;
       if (publishedIsMomentum) publishedIsMomentum.value = false;
+      externalHandlers?.onMomentumEnd?.(event);
 
-      const offset = horizontal ? event.contentOffset.x : event.contentOffset.y;
+      const offset = getReportedOffset(event, horizontal);
 
       if (offset !== lastReportedScroll.value) {
         lastReportedScroll.value = offset;

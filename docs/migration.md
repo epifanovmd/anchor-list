@@ -22,7 +22,8 @@
 | — | `onStartReached` / `onStartReachedThreshold` | Есть симметричный порог у начала |
 | `onViewableItemsChanged` + `viewabilityConfig` | `viewabilityPairs` | Один массив пар вместо двух пропов; наборов может быть несколько |
 | `viewabilityConfigCallbackPairs` | `viewabilityPairs` | Практически то же |
-| `onScroll` | `sharedValues.scrollOffset` | Отдельного `onScroll` нет: смещение живёт на UI-потоке |
+| `onScroll` | `sharedValues.scrollOffset` / `scrollHandlers` | JS-`onScroll` нет: смещение живёт на UI-потоке, события — worklet-ами |
+| `refreshControl` | `bounces` + `scrollHandlers` + `renderScrollView` | Своего индикатора нет: протяжка собирается снаружи |
 | `maintainVisibleContentPosition` | `maintainVisibleContentPosition` | Не `{minIndexForVisible}`, а `{data, size, shouldRestorePosition}` |
 | `initialScrollIndex` | `initialScroll={{ type: "index", index }}` | Плюс варианты `end` и `offset` |
 | `inverted` | — | **Нет.** См. ниже |

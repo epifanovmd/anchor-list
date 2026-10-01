@@ -313,6 +313,104 @@ describe("useListScrollHandler", () => {
     handlers.onEndDrag(scrollTo(MIDDLE + 8));
     expect(onScroll).toHaveBeenCalledWith(MIDDLE + 8, expect.any(Number));
   });
+  /**
+   * С `bounces` iOS тянет контент за кромку: смещение уходит в минус у начала и
+   * за границу у конца. Это не позиция в контенте, а резинка — расчёт в JS
+   * (диапазон, компенсация, пороги) обязан видеть кромку, а не перелёт.
+   */
+  describe("оттяжка за кромку", () => {
+    it("не уводит в JS отрицательное смещение у начала", () => {
+      const { handlers, onScroll, seed } = setup();
+
+      seed(MIDDLE);
+      handlers.onScroll(scrollTo(0));
+      handlers.onScroll(scrollTo(-30));
+      handlers.onScroll(scrollTo(-60));
+      handlers.onEndDrag(scrollTo(-60));
+      handlers.onMomentumEnd(scrollTo(-10));
+
+      const offsets = onScroll.mock.calls.map(([offset]) => offset as number);
+
+      expect(Math.min(...offsets)).toBe(0);
+    });
+
+    it("не гонит в JS каждый кадр резинки", () => {
+      const { handlers, onScroll, seed } = setup();
+
+      seed(0);
+      handlers.onScroll(scrollTo(-10));
+      handlers.onScroll(scrollTo(-40));
+      handlers.onScroll(scrollTo(-80));
+
+      expect(onScroll).not.toHaveBeenCalled();
+    });
+
+    it("не уводит в JS смещение за концом контента", () => {
+      const { handlers, onScroll, seed } = setup();
+
+      seed(MAX_SCROLL - 40);
+      handlers.onScroll(scrollTo(MAX_SCROLL + 50));
+      handlers.onEndDrag(scrollTo(MAX_SCROLL + 70));
+
+      const offsets = onScroll.mock.calls.map(([offset]) => offset as number);
+
+      expect(Math.max(...offsets)).toBe(MAX_SCROLL);
+    });
+
+    it("на UI-потоке и наружу отдаёт смещение как есть", () => {
+      // Прилипающие копии и чужие эффекты (pull-to-refresh) едут вместе с
+      // резинкой: им нужно настоящее смещение, а не зажатое.
+      const published = sharedValue(0);
+      const { handlers, scrollOffset } = setup({
+        publishedScrollOffset: published,
+      });
+
+      handlers.onScroll(scrollTo(-45));
+
+      expect(scrollOffset.value).toBe(-45);
+      expect(published.value).toBe(-45);
+    });
+  });
+
+  describe("внешние обработчики", () => {
+    it("получают каждое событие каждой фазы", () => {
+      const external = {
+        onScroll: jest.fn(),
+        onBeginDrag: jest.fn(),
+        onEndDrag: jest.fn(),
+        onMomentumBegin: jest.fn(),
+        onMomentumEnd: jest.fn(),
+      };
+      const { handlers, seed } = setup({ externalHandlers: external });
+
+      seed(MIDDLE);
+      // Меньше шага: в JS не уходит, а наружу — обязано.
+      handlers.onScroll(scrollTo(MIDDLE + 1));
+      handlers.onBeginDrag(scrollTo(MIDDLE + 1));
+      handlers.onEndDrag(scrollTo(MIDDLE + 2));
+      handlers.onMomentumBegin(scrollTo(MIDDLE + 2));
+      handlers.onMomentumEnd(scrollTo(MIDDLE + 3));
+
+      expect(external.onScroll).toHaveBeenCalledTimes(2);
+      expect(external.onScroll).toHaveBeenLastCalledWith(scrollTo(MIDDLE + 1));
+      expect(external.onBeginDrag).toHaveBeenCalledWith(scrollTo(MIDDLE + 1));
+      expect(external.onEndDrag).toHaveBeenCalledWith(scrollTo(MIDDLE + 2));
+      expect(external.onMomentumBegin).toHaveBeenCalledWith(
+        scrollTo(MIDDLE + 2),
+      );
+      expect(external.onMomentumEnd).toHaveBeenCalledWith(scrollTo(MIDDLE + 3));
+    });
+
+    it("получают событие резинки без зажима", () => {
+      const onScroll = jest.fn();
+      const { handlers } = setup({ externalHandlers: { onScroll } });
+
+      handlers.onScroll(scrollTo(-45));
+
+      expect(onScroll).toHaveBeenCalledWith(scrollTo(-45));
+    });
+  });
+
   describe("горизонтальная ось", () => {
     it("берёт смещение из X, а не из Y", () => {
       const { handlers, scrollOffset } = setup({ horizontal: true });

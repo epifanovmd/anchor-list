@@ -554,8 +554,17 @@ Safe area уже входит в значение, поэтому авто-по�
 | `onScrollBeginDrag?: () => void` | Палец лёг на экран: внешняя логика позиции обязана уступить жесту |
 | `onScrollEndDrag?: () => void` | Палец отпущен; дальше возможна инерция |
 
-Отдельного `onScroll` нет: смещение отдаётся через `sharedValues.scrollOffset`
-и живёт на UI-потоке.
+Отдельного JS-`onScroll` нет: смещение отдаётся через
+`sharedValues.scrollOffset` и живёт на UI-потоке. Кому нужны сами события —
+`scrollHandlers`.
+
+### `scrollHandlers?: IAnchorListScrollHandlers`
+
+Worklet-обработчики фаз скролла: `onScroll`, `onBeginDrag`, `onEndDrag`,
+`onMomentumBegin`, `onMomentumEnd`. Вызываются на UI-потоке каждым событием,
+после того как список записал своё, и получают нативное событие как есть — с
+резинкой за кромкой, без шага и зажима. Для телеметрии экрана,
+pull-to-refresh, синхронизации баров. Каждый обработчик обязан быть worklet-ом.
 
 ---
 
@@ -569,6 +578,32 @@ Safe area уже входит в значение, поэтому авто-по�
 ### `contentContainerStyle?: StyleProp<ViewStyle>`
 
 Стиль контента внутри `ScrollView`: отступы вокруг элементов.
+
+### `bounces?: boolean`
+
+Оттяжка за кромку на iOS, по умолчанию `false`. Включается под pull-to-refresh
+и прочие эффекты резинки. Расчёт списка её не видит: в JS смещение уходит
+зажатым в пределы контента, поэтому диапазон, компенсация и пороги кромок
+считаются от того места, где контент остановится. Прилипание,
+`sharedValues.scrollOffset` и `scrollHandlers` получают смещение как есть —
+прилипшая шапка едет вместе с контентом, а `distanceFromStart` на время оттяжки
+уходит в минус.
+
+### `renderScrollView?: (scrollView: ReactElement) => ReactElement`
+
+Обёртка вокруг внутреннего `ScrollView`. Получает готовый элемент и обязана
+вернуть его ровно один раз. Нужна, когда жест должен работать одновременно с
+нативным жестом самого скролла — например `GestureDetector` для
+pull-to-refresh на Android: детектор цепляется к прямому ребёнку, и обёртка над
+всем списком досталась бы внешней `View`, а не скроллу.
+
+```tsx
+<AnchorList
+  renderScrollView={scrollView => (
+    <GestureDetector gesture={gesture}>{scrollView}</GestureDetector>
+  )}
+/>
+```
 
 ### `refScrollView?: AnimatedRef<Animated.ScrollView>`
 
@@ -586,6 +621,7 @@ Ref нижележащего `ScrollView`. Нужен тем, кто двига�
 | Проп | По умолчанию |
 | --- | --- |
 | `horizontal` | `false` |
+| `bounces` | `false` |
 | `drawDistance` | `400` |
 | `scrollThrottleDistance` | `24` |
 | `gap` | `0` |
@@ -605,7 +641,7 @@ Ref нижележащего `ScrollView`. Нужен тем, кто двига�
 | `itemsAreEqual` | сравнение по ссылке |
 
 Значения, которыми список распоряжается сам и которые нельзя настроить:
-`scrollEventThrottle` (1 мс), `bounces` (`false`), `keyboardDismissMode`
+`scrollEventThrottle` (1 мс), `keyboardDismissMode`
 (`interactive` на iOS, `on-drag` на Android), рост буфера отрисовки со скоростью,
 шаг пересчёта диапазона (24 px), один круг страховки первого показа (150 мс,
 до десяти дополнительных кругов, пока идёт начальная раскладка).

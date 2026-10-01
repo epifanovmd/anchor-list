@@ -8,7 +8,7 @@
 | --- | --- |
 | Несколько колонок, masonry | Раскладка одномерная: позиция элемента — сумма размеров предыдущих |
 | `inverted` | Та же задача решается прямым списком — см. [Миграцию](migration.md#что-делать-вместо-inverted) |
-| `RefreshControl` / pull-to-refresh | Своей поддержки нет; до `ScrollView` можно дотянуться через `refScrollView` |
+| `RefreshControl` / pull-to-refresh | Своего индикатора нет; протяжка собирается снаружи из `bounces`, `scrollHandlers` и `renderScrollView` |
 | Секции (`SectionList`) | Данные — плоский массив; прилипающие заголовки делаются через `sticky` |
 | Горизонтальный список под RTL | Нативное удержание позиции не учитывает RTL — см. ниже |
 | Web | Удержание позиции опирается на нативный `maintainVisibleContentPosition`, которого нет в `react-native-web` |
@@ -37,10 +37,12 @@
 а не между строками; объявленные через `getFixedItemSize` размеры обязаны его
 учитывать. В `FlatList` устроено иначе.
 
-**Отдельного `onScroll` нет.** Смещение отдаётся через
-`sharedValues.scrollOffset` на UI-потоке.
+**Отдельного JS-`onScroll` нет.** Смещение отдаётся через
+`sharedValues.scrollOffset` на UI-потоке, события — worklet-ами
+`scrollHandlers`.
 
-**`bounces` выключен** и не настраивается.
+**`bounces` выключен по умолчанию.** Включённая оттяжка до расчёта списка не
+доходит: в JS смещение зажимается в пределы контента.
 
 **`keyboardDismissMode` задаёт список**: `interactive` на iOS, `on-drag` на
 Android.

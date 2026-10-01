@@ -115,6 +115,9 @@ const AnchorListInner = <TItem,>(
     onContentSizeChange,
     onScrollBeginDrag,
     onScrollEndDrag,
+    bounces = false,
+    scrollHandlers,
+    renderScrollView,
   } = props;
 
   const innerScrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -199,7 +202,8 @@ const AnchorListInner = <TItem,>(
         scrollRef.current?.scrollTo(
           horizontal ? { x: offset, animated } : { y: offset, animated },
         ),
-      getOffset: () => scrollOffset.value,
+      // Резинка у начала — не позиция: расчёт видит кромку, а не перелёт.
+      getOffset: () => Math.max(0, scrollOffset.value),
     });
 
     return () => {
@@ -428,70 +432,75 @@ const AnchorListInner = <TItem,>(
     onBeginDrag: handleScrollBeginDrag,
     onEndDrag: handleScrollEndDrag,
     onMomentumEnd: handleMomentumScrollEnd,
+    externalHandlers: scrollHandlers,
   });
 
   const renderItemUntyped = renderItem as (
     props: IAnchorListRenderItemProps<unknown>,
   ) => React.ReactNode;
 
+  const scrollView = (
+    <Animated.ScrollView
+      ref={scrollRef}
+      horizontal={horizontal}
+      style={styles.scroll}
+      contentContainerStyle={contentContainerStyle}
+      onLayout={handleLayout}
+      onScroll={scrollHandler}
+      onContentSizeChange={handleContentSizeChange}
+      maintainVisibleContentPosition={nativeMaintainVisibleContentPosition}
+      snapToOffsets={snapToOffsets}
+      animatedProps={insetEnd ? scrollIndicatorProps : undefined}
+      keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      // iOS сам добавляет safe area к инсетам индикатора, а она уже входит
+      // в отступ — авто-подстройка давала бы двойной.
+      automaticallyAdjustsScrollIndicatorInsets={!insetEnd}
+      scrollEventThrottle={SCROLL_EVENT_THROTTLE}
+      bounces={bounces}
+    >
+      {/* Первым ребёнком: за ним следит нативное удержание позиции. */}
+      <ListScrollAdjust />
+
+      {/* Обёртка раскладывается вдоль оси по той же причине, что и слот
+          строки: иначе поперечный размер до содержимого не доходит, и
+          шапка горизонтального списка не занимает высоту ленты. */}
+      <View
+        style={getAxisContentStyle(horizontal)}
+        onLayout={handleHeaderLayout}
+      >
+        {renderListSlot(ListHeaderComponent)}
+      </View>
+
+      {data.length === 0 ? (
+        renderListSlot(ListEmptyComponent)
+      ) : (
+        <ListContainers
+          renderItem={renderItemUntyped}
+          extraData={extraData}
+          ItemSeparatorComponent={ItemSeparatorComponent}
+          alignOffset={insetEndLayout.alignOffset}
+        />
+      )}
+
+      <ListAnchoredEndSpace />
+
+      <View
+        style={getAxisContentStyle(horizontal)}
+        onLayout={handleFooterLayout}
+      >
+        {renderListSlot(ListFooterComponent)}
+      </View>
+
+      {insetEnd ? <ListInsetEndSpace size={insetEndLayout.spacer} /> : null}
+    </Animated.ScrollView>
+  );
+
   return (
     <ListContextProvider value={contextValue}>
       {/* Обёртка нужна слою прилипших копий: он живёт снаружи ScrollView, в
           координатах вьюпорта, и потому не едет вместе с контентом. */}
       <View style={style}>
-        <Animated.ScrollView
-          ref={scrollRef}
-          horizontal={horizontal}
-          style={styles.scroll}
-          contentContainerStyle={contentContainerStyle}
-          onLayout={handleLayout}
-          onScroll={scrollHandler}
-          onContentSizeChange={handleContentSizeChange}
-          maintainVisibleContentPosition={nativeMaintainVisibleContentPosition}
-          snapToOffsets={snapToOffsets}
-          animatedProps={insetEnd ? scrollIndicatorProps : undefined}
-          keyboardDismissMode={KEYBOARD_DISMISS_MODE}
-          // iOS сам добавляет safe area к инсетам индикатора, а она уже входит
-          // в отступ — авто-подстройка давала бы двойной.
-          automaticallyAdjustsScrollIndicatorInsets={!insetEnd}
-          scrollEventThrottle={SCROLL_EVENT_THROTTLE}
-          bounces={false}
-        >
-          {/* Первым ребёнком: за ним следит нативное удержание позиции. */}
-          <ListScrollAdjust />
-
-          {/* Обёртка раскладывается вдоль оси по той же причине, что и слот
-              строки: иначе поперечный размер до содержимого не доходит, и
-              шапка горизонтального списка не занимает высоту ленты. */}
-          <View
-            style={getAxisContentStyle(horizontal)}
-            onLayout={handleHeaderLayout}
-          >
-            {renderListSlot(ListHeaderComponent)}
-          </View>
-
-          {data.length === 0 ? (
-            renderListSlot(ListEmptyComponent)
-          ) : (
-            <ListContainers
-              renderItem={renderItemUntyped}
-              extraData={extraData}
-              ItemSeparatorComponent={ItemSeparatorComponent}
-              alignOffset={insetEndLayout.alignOffset}
-            />
-          )}
-
-          <ListAnchoredEndSpace />
-
-          <View
-            style={getAxisContentStyle(horizontal)}
-            onLayout={handleFooterLayout}
-          >
-            {renderListSlot(ListFooterComponent)}
-          </View>
-
-          {insetEnd ? <ListInsetEndSpace size={insetEndLayout.spacer} /> : null}
-        </Animated.ScrollView>
+        {renderScrollView ? renderScrollView(scrollView) : scrollView}
 
         <ListStickyOverlay
           renderItem={renderItemUntyped}
