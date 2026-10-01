@@ -41,7 +41,12 @@ import {
   getAxisPosition,
   getAxisSize,
 } from "./axis";
-import { renderListSlot, resolveSlotGaps } from "./list-slots";
+import {
+  getContentContainerStyle,
+  getEmptySlotStyle,
+  renderListSlot,
+  resolveSlotGaps,
+} from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
 import { ListInsetEndSpace } from "./ListInsetEndSpace";
@@ -482,6 +487,8 @@ const AnchorListInner = <TItem,>(
 
   const header = renderListSlot(ListHeaderComponent);
   const footer = renderListSlot(ListFooterComponent);
+  const empty = data.length === 0 ? renderListSlot(ListEmptyComponent) : null;
+  const showsEmpty = empty !== null;
   const slotGaps = resolveSlotGaps({
     gap,
     headerGap,
@@ -504,13 +511,17 @@ const AnchorListInner = <TItem,>(
     ],
     [horizontal, slotGaps.footer],
   );
+  const contentStyle = useMemo(
+    () => getContentContainerStyle(contentContainerStyle, showsEmpty),
+    [contentContainerStyle, showsEmpty],
+  );
 
   const scrollView = (
     <Animated.ScrollView
       ref={scrollRef}
       horizontal={horizontal}
       style={styles.scroll}
-      contentContainerStyle={contentContainerStyle}
+      contentContainerStyle={contentStyle}
       onLayout={handleLayout}
       onScroll={scrollHandler}
       onContentSizeChange={handleContentSizeChange}
@@ -537,16 +548,18 @@ const AnchorListInner = <TItem,>(
         {header}
       </View>
 
-      {data.length === 0 ? (
-        renderListSlot(ListEmptyComponent)
-      ) : (
+      {showsEmpty ? (
+        <View style={getEmptySlotStyle(horizontal)}>{empty}</View>
+      ) : null}
+
+      {data.length > 0 ? (
         <ListContainers
           renderItem={renderItemUntyped}
           extraData={extraData}
           ItemSeparatorComponent={ItemSeparatorComponent}
           alignOffset={insetEndLayout.alignOffset}
         />
-      )}
+      ) : null}
 
       <ListAnchoredEndSpace />
 

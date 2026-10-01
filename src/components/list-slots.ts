@@ -1,5 +1,8 @@
 import type { ComponentType, ReactElement, ReactNode } from "react";
 import { createElement, isValidElement } from "react";
+import type { StyleProp, ViewStyle } from "react-native";
+
+import { getAxisContentStyle } from "./axis";
 
 /** Header/Footer/Empty принимаются и элементом, и типом компонента. */
 export type ListSlot = ComponentType<unknown> | ReactElement | null | undefined;
@@ -57,3 +60,31 @@ export const resolveSlotGaps = ({
   header: hasItems && hasHeader ? (headerGap ?? gap) : 0,
   footer: hasItems && hasFooter ? (footerGap ?? gap) : 0,
 });
+
+const FILL: ViewStyle = { flexGrow: 1 };
+const EMPTY_COLUMN: ViewStyle = { ...getAxisContentStyle(false), ...FILL };
+const EMPTY_ROW: ViewStyle = { ...getAxisContentStyle(true), ...FILL };
+
+/**
+ * Стиль контента `ScrollView`.
+ *
+ * Пока показана заглушка пустого списка, контент растягивается на вьюпорт:
+ * иначе ей не на что расти, и поставить её по центру нельзя. Со строками —
+ * никогда: растянутый контент перестаёт быть короче вьюпорта, и всё, что
+ * опирается на короткий список (прижатие к концу, кромки), считало бы его
+ * длинным.
+ */
+export const getContentContainerStyle = (
+  style: StyleProp<ViewStyle>,
+  showsEmpty: boolean,
+): StyleProp<ViewStyle> => (showsEmpty ? [FILL, style] : style);
+
+/**
+ * Обёртка заглушки: забирает свободное место вдоль оси.
+ *
+ * Внутри заглушка раскладывается вдоль той же оси, что и контент, — `flex: 1`
+ * и `justifyContent: "center"` в её корне ставят её по центру свободного
+ * места.
+ */
+export const getEmptySlotStyle = (horizontal: boolean): ViewStyle =>
+  horizontal ? EMPTY_ROW : EMPTY_COLUMN;

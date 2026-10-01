@@ -1,6 +1,11 @@
 import { createElement, isValidElement } from "react";
 
-import { renderListSlot, resolveSlotGaps } from "../list-slots";
+import {
+  getContentContainerStyle,
+  getEmptySlotStyle,
+  renderListSlot,
+  resolveSlotGaps,
+} from "../list-slots";
 
 const Header = () => null;
 
@@ -63,5 +68,39 @@ describe("resolveSlotGaps", () => {
         hasFooter: false,
       }),
     ).toEqual({ header: 0, footer: 0 });
+  });
+});
+
+describe("пустое состояние", () => {
+  /**
+   * Жалоба: заглушку пустого списка нельзя поставить по центру — ей не на что
+   * растянуться: контент высотой с неё саму.
+   */
+  it("растягивает контент на вьюпорт, пока показана заглушка", () => {
+    const user = { paddingTop: 24 };
+
+    expect(getContentContainerStyle(user, true)).toEqual([
+      { flexGrow: 1 },
+      user,
+    ]);
+  });
+
+  it("не трогает контент со строками", () => {
+    const user = { paddingTop: 24 };
+
+    // Растянутый контент сломал бы короткий список: он перестал бы быть
+    // короче вьюпорта.
+    expect(getContentContainerStyle(user, false)).toBe(user);
+  });
+
+  it("растягивает саму заглушку вдоль оси", () => {
+    expect(getEmptySlotStyle(false)).toMatchObject({
+      flexDirection: "column",
+      flexGrow: 1,
+    });
+    expect(getEmptySlotStyle(true)).toMatchObject({
+      flexDirection: "row",
+      flexGrow: 1,
+    });
   });
 });

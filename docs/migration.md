@@ -14,7 +14,7 @@
 | `extraData` | `extraData` | Приходит в `renderItem` полем, а не только инвалидирует |
 | `ListHeaderComponent` | `ListHeaderComponent` | — |
 | `ListFooterComponent` | `ListFooterComponent` | — |
-| `ListEmptyComponent` | `ListEmptyComponent` | — |
+| `ListEmptyComponent` | `ListEmptyComponent` | Растягивается на свободное место сам: `flexGrow: 1` в `contentContainerStyle` не нужен |
 | `ItemSeparatorComponent` | `ItemSeparatorComponent` | **Рисуется внутри ячейки и входит в её высоту** |
 | `contentContainerStyle={{ gap }}` | `gap`, `getItemGap`, `headerGap`, `footerGap` | Зазор знает список: он между слотами, а не в них — [почему](rendering.md#отступы-и-зазоры). Между шапкой/подвалом и строками — тот же `gap`, как во flexbox |
 | `onEndReached` | `onEndReached` | Один раз на вход в зону; повтор — на жесте и на смене данных у конца, как у `FlatList` по смене длины контента; получает `{ distanceFromEnd }` |

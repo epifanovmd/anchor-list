@@ -588,7 +588,14 @@ export interface IAnchorListProps<TItem> {
 
   ListHeaderComponent?: ComponentType<unknown> | ReactElement | null;
   ListFooterComponent?: ComponentType<unknown> | ReactElement | null;
-  /** Показывается вместо элементов, когда данные пусты. */
+  /**
+   * Показывается вместо элементов, когда данные пусты.
+   *
+   * Обёртка заглушки забирает всё свободное место вдоль оси, а контент на это
+   * время растягивается на вьюпорт: `flex: 1` и `justifyContent: "center"` в
+   * корне заглушки ставят её по центру. Подвал при этом уходит к концу
+   * вьюпорта.
+   */
   ListEmptyComponent?: ComponentType<unknown> | ReactElement | null;
   /**
    * Рисуется внутри ячейки, следом за содержимым строки, и входит в её размер.
