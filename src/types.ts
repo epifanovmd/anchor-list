@@ -728,6 +728,15 @@ export interface IAnchorListProps<TItem> {
    * ребёнку, а это была бы внешняя `View`, а не скролл.
    */
   renderScrollView?: (scrollView: ReactElement) => ReactElement;
+  /**
+   * Сдвиг списка вдоль оси скролла, px — трансформом на UI-потоке.
+   *
+   * Двигает `ScrollView` вместе со слоем прилипших копий: слой живёт снаружи
+   * скролла, и сдвиг, сделанный внутри `renderScrollView`, его не задевал —
+   * копия оставалась на месте, пока контент ехал за пальцем (pull-to-refresh
+   * на Android). Расчёт списка сдвига не видит: это не смещение скролла.
+   */
+  contentTranslate?: SharedValue<number>;
 
   /** Стиль обёртки списка: сюда идут размеры и фон. */
   style?: StyleProp<ViewStyle>;

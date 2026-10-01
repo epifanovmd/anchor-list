@@ -668,6 +668,32 @@ pull-to-refresh на Android: детектор цепляется к прямо�
 />
 ```
 
+Двигать скролл внутри этой обёртки нельзя: слой прилипших копий живёт снаружи
+`ScrollView` и остался бы на месте. Для сдвига — [`contentTranslate`](#contenttranslate-sharedvaluenumber).
+
+### `contentTranslate?: SharedValue<number>`
+
+Сдвиг списка вдоль оси скролла, px, — трансформом на UI-потоке. Двигает
+`ScrollView` вместе со слоем прилипших копий: так контент едет за пальцем при
+pull-to-refresh на Android, и прилипшая копия едет с ним, а не остаётся на
+месте.
+
+```tsx
+const pull = useSharedValue(0); // ведёт жест протяжки
+
+<AnchorList
+  contentTranslate={pull}
+  renderScrollView={scrollView => (
+    <GestureDetector gesture={gesture}>{scrollView}</GestureDetector>
+  )}
+/>
+```
+
+Расчёт списка сдвига не видит: это не смещение скролла, а перенос всего слоя.
+Задавайте проп на всё время жизни списка: с ним список кладёт скролл и слой
+копий в общую `Animated.View`, и его появление или снятие перемонтирует
+`ScrollView`.
+
 ### `refScrollView?: AnimatedRef<Animated.ScrollView>`
 
 Ref нижележащего `ScrollView`. Нужен тем, кто двигает позицию с UI-потока —

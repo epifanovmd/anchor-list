@@ -18,6 +18,7 @@ import {
 import Animated, {
   useAnimatedProps,
   useAnimatedRef,
+  useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 
@@ -40,6 +41,7 @@ import {
   getAxisGapStyle,
   getAxisPosition,
   getAxisSize,
+  getAxisTranslate,
 } from "./axis";
 import {
   getContentContainerStyle,
@@ -144,6 +146,7 @@ const AnchorListInner = <TItem,>(
     keyboardShouldPersistTaps,
     scrollHandlers,
     renderScrollView,
+    contentTranslate,
   } = props;
 
   const innerScrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -516,6 +519,11 @@ const AnchorListInner = <TItem,>(
     [contentContainerStyle, showsEmpty],
   );
 
+  // Вызывается всегда — хуки не ветвятся; без пропа слой не создаётся.
+  const translateStyle = useAnimatedStyle(() => ({
+    transform: getAxisTranslate(contentTranslate?.value ?? 0, horizontal),
+  }));
+
   const scrollView = (
     <Animated.ScrollView
       ref={scrollRef}
@@ -571,17 +579,27 @@ const AnchorListInner = <TItem,>(
     </Animated.ScrollView>
   );
 
+  const layers = (
+    <>
+      {renderScrollView ? renderScrollView(scrollView) : scrollView}
+
+      <ListStickyOverlay renderItem={renderItemUntyped} extraData={extraData} />
+    </>
+  );
+
   return (
     <ListContextProvider value={contextValue}>
       {/* Обёртка нужна слою прилипших копий: он живёт снаружи ScrollView, в
-          координатах вьюпорта, и потому не едет вместе с контентом. */}
+          координатах вьюпорта, и потому не едет вместе с контентом. Внешний
+          сдвиг поэтому ставится на общий слой, а не на сам скролл. */}
       <View style={style}>
-        {renderScrollView ? renderScrollView(scrollView) : scrollView}
-
-        <ListStickyOverlay
-          renderItem={renderItemUntyped}
-          extraData={extraData}
-        />
+        {contentTranslate ? (
+          <Animated.View style={[styles.scroll, translateStyle]}>
+            {layers}
+          </Animated.View>
+        ) : (
+          layers
+        )}
       </View>
     </ListContextProvider>
   );

@@ -8,7 +8,7 @@
 | --- | --- |
 | Несколько колонок, masonry | Раскладка одномерная: позиция элемента — сумма размеров предыдущих |
 | `inverted` | Та же задача решается прямым списком — см. [Миграцию](migration.md#что-делать-вместо-inverted) |
-| `RefreshControl` / pull-to-refresh | Своего индикатора нет; протяжка собирается снаружи из `bounces`, `scrollHandlers` и `renderScrollView` |
+| `RefreshControl` / pull-to-refresh | Своего индикатора нет; протяжка собирается снаружи из `bounces`, `scrollHandlers`, `renderScrollView` и `contentTranslate` |
 | Секции (`SectionList`) | Данные — плоский массив; прилипающие заголовки делаются через `sticky` |
 | Горизонтальный список под RTL | Нативное удержание позиции не учитывает RTL — см. ниже |
 | Web | Удержание позиции опирается на нативный `maintainVisibleContentPosition`, которого нет в `react-native-web` |
