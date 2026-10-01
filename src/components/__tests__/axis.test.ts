@@ -3,6 +3,7 @@ import {
   getAxisContentStyle,
   getAxisLengthStyle,
   getAxisPinStyle,
+  getAxisPosition,
   getAxisSize,
   getAxisSlotStyle,
   getAxisTranslate,
@@ -194,5 +195,20 @@ describe("getAxisAnchorStyle", () => {
       left: 10000000,
       top: 0,
     });
+  });
+});
+
+describe("getAxisPosition", () => {
+  /**
+   * Жалоба: `contentContainerStyle.paddingTop` не входил в начало координат
+   * строк — у шапки бралась только высота, а где она начинается, не знал
+   * никто.
+   */
+  it("вертикальный список берёт позицию слота по y", () => {
+    expect(getAxisPosition(16, 24, false)).toBe(24);
+  });
+
+  it("горизонтальный — по x", () => {
+    expect(getAxisPosition(16, 24, true)).toBe(16);
   });
 });

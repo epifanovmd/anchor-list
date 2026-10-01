@@ -35,6 +35,18 @@ export const getAxisSize = (
   horizontal: boolean,
 ): number => (horizontal ? width : height);
 
+/**
+ * Позиция вдоль оси скролла — из события раскладки.
+ *
+ * Нужна шапке: строки начинаются не с её высоты, а с её конца, а над ней ещё
+ * лежит отступ контейнера контента (`contentContainerStyle.paddingTop`).
+ */
+export const getAxisPosition = (
+  x: number,
+  y: number,
+  horizontal: boolean,
+): number => (horizontal ? x : y);
+
 /** Геометрия слота одной строки. */
 export interface IAxisSlot {
   /** Позиция строки вдоль оси скролла, в координатах элементов. */

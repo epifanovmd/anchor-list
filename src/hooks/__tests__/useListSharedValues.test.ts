@@ -105,6 +105,7 @@ describe("useListSharedValues", () => {
       scrollLength: sharedValue(0),
       scrollSize: sharedValue({ width: 0, height: 0 }),
       headerSize: sharedValue(0),
+      contentOrigin: sharedValue(0),
       footerSize: sharedValue(0),
       anchoredEndSpaceSize: sharedValue(0),
       readyToRender: sharedValue(false),
@@ -124,6 +125,7 @@ describe("useListSharedValues", () => {
       store.set("scrollLength", 500);
       store.set("scrollSize", { width: 390, height: 500 });
       store.set("headerSize", 60);
+      store.set("contentOrigin", 84);
       store.set("footerSize", 40);
       store.set("anchoredEndSpaceSize", 24);
       store.set("readyToRender", true);
@@ -147,6 +149,7 @@ describe("useListSharedValues", () => {
       scrollLength: 500,
       scrollSize: { width: 390, height: 500 },
       headerSize: 60,
+      contentOrigin: 84,
       footerSize: 40,
       anchoredEndSpaceSize: 24,
       readyToRender: true,

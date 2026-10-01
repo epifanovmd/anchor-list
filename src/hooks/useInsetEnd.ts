@@ -28,7 +28,8 @@ export interface IInsetEndOptions {
    * решать по ней нужно в том же кадре, в котором сдвинулась клавиатура.
    */
   totalSize: SharedValue<number>;
-  headerSize: SharedValue<number>;
+  /** Начало строк: отступ контейнера контента и шапка. */
+  contentOrigin: SharedValue<number>;
   footerSize: SharedValue<number>;
   anchoredEndSpaceSize: SharedValue<number>;
   /** Размер вьюпорта вдоль оси скролла — зеркало того же сигнала. */
@@ -86,7 +87,7 @@ export const useInsetEnd = ({
   insetEnd,
   alignItemsAtEnd,
   totalSize,
-  headerSize,
+  contentOrigin,
   footerSize,
   anchoredEndSpaceSize,
   scrollLength,
@@ -116,7 +117,7 @@ export const useInsetEnd = ({
       inset: insetEnd?.value ?? 0,
       base:
         totalSize.value +
-        headerSize.value +
+        contentOrigin.value +
         footerSize.value +
         anchoredEndSpaceSize.value,
       length: scrollLength.value,

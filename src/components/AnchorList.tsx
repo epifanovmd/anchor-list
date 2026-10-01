@@ -35,7 +35,7 @@ import type {
   IAnchorListRenderItemProps,
   IAnchorListStickyConfig,
 } from "../types";
-import { getAxisContentStyle, getAxisSize } from "./axis";
+import { getAxisContentStyle, getAxisPosition, getAxisSize } from "./axis";
 import { renderListSlot } from "./list-slots";
 import { ListAnchoredEndSpace } from "./ListAnchoredEndSpace";
 import { ListContainers } from "./ListContainers";
@@ -79,6 +79,17 @@ const KEYBOARD_DISMISS_MODE = Platform.OS === "ios" ? "interactive" : "on-drag";
  * случайные прыжки контента, и искать его будут где угодно, только не здесь.
  */
 let rtlWarned = false;
+
+/**
+ * То же для `gap` в `contentContainerStyle`.
+ *
+ * Зачем нужно: flexbox кладёт его между узлами контента — шапкой, слоем строк,
+ * распорками и подвалом, — и строки уезжают от шапки на величину, которой
+ * список не видит: начало координат строк он берёт по концу шапки. Диапазон,
+ * прилипание и переход к строке промахиваются ровно на неё. Зазор между
+ * строками задаётся пропом `gap`.
+ */
+let contentGapWarned = false;
 
 /**
  * Виртуализированный список.
@@ -129,7 +140,7 @@ const AnchorListInner = <TItem,>(
   const edgeScrollLength = useSharedValue(0);
   const edgeEndSpace = useSharedValue(0);
   const edgeTotalSize = useSharedValue(0);
-  const edgeHeaderSize = useSharedValue(0);
+  const edgeContentOrigin = useSharedValue(0);
   const edgeFooterSize = useSharedValue(0);
   // Фаза жеста. Своя, а не та, что просят наружу: раскладка нижнего отступа
   // обязана уступать жесту и без чужой подписки.
@@ -155,11 +166,26 @@ const AnchorListInner = <TItem,>(
     );
   }, [horizontal]);
 
+  useEffect(() => {
+    if (!__DEV__ || contentGapWarned) return;
+
+    const flat = StyleSheet.flatten(contentContainerStyle);
+
+    if (!flat?.gap && !flat?.rowGap && !flat?.columnGap) return;
+
+    contentGapWarned = true;
+    console.warn(
+      "AnchorList: gap в contentContainerStyle не поддерживается — список не " +
+        "видит его в раскладке, и строки смещаются относительно расчёта. " +
+        "Используйте проп gap. См. docs/props.md.",
+    );
+  }, [contentContainerStyle]);
+
   const insetEndLayout = useInsetEnd({
     insetEnd,
     alignItemsAtEnd: props.alignItemsAtEnd ?? false,
     totalSize: edgeTotalSize,
-    headerSize: edgeHeaderSize,
+    contentOrigin: edgeContentOrigin,
     footerSize: edgeFooterSize,
     anchoredEndSpaceSize: edgeEndSpace,
     scrollLength: edgeScrollLength,
@@ -245,11 +271,11 @@ const AnchorListInner = <TItem,>(
   const layoutValues = useMemo(
     () => ({
       scrollLength: edgeScrollLength,
-      contentOrigin: edgeHeaderSize,
+      contentOrigin: edgeContentOrigin,
       insetEnd,
       alignOffset: insetEndLayout.alignOffset,
     }),
-    [edgeScrollLength, edgeHeaderSize, insetEnd, insetEndLayout.alignOffset],
+    [edgeScrollLength, edgeContentOrigin, insetEnd, insetEndLayout.alignOffset],
   );
 
   const contextValue = useMemo(
@@ -289,7 +315,7 @@ const AnchorListInner = <TItem,>(
       scrollLength: edgeScrollLength,
       anchoredEndSpaceSize: edgeEndSpace,
       totalSize: edgeTotalSize,
-      headerSize: edgeHeaderSize,
+      contentOrigin: edgeContentOrigin,
       footerSize: edgeFooterSize,
       readyToRender: isRevealed,
     }),
@@ -298,7 +324,7 @@ const AnchorListInner = <TItem,>(
       edgeScrollLength,
       edgeEndSpace,
       edgeTotalSize,
-      edgeHeaderSize,
+      edgeContentOrigin,
       edgeFooterSize,
       isRevealed,
     ],
@@ -373,11 +399,16 @@ const AnchorListInner = <TItem,>(
     [runtime, onLayout, horizontal],
   );
 
+  // Позиция шапки нужна не меньше её размера: над ней лежит отступ
+  // контейнера контента, и строки начинаются с её конца, а не с её высоты.
   const handleHeaderLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      const { width, height } = event.nativeEvent.layout;
+      const { x, y, width, height } = event.nativeEvent.layout;
 
-      runtime.setHeaderSize(getAxisSize(width, height, horizontal));
+      runtime.setHeaderSize(
+        getAxisSize(width, height, horizontal),
+        getAxisPosition(x, y, horizontal),
+      );
     },
     [runtime, horizontal],
   );

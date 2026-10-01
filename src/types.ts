@@ -315,6 +315,11 @@ export interface IAnchorListSharedValues {
   /** Размер вьюпорта целиком. */
   scrollSize?: SharedValue<IAnchorListScrollSize>;
   headerSize?: SharedValue<number>;
+  /**
+   * Начало строк в координатах контента: отступ контейнера контента плюс
+   * шапка.
+   */
+  contentOrigin?: SharedValue<number>;
   footerSize?: SharedValue<number>;
   /** Распорка у конца, поднимающая якорный элемент к верхней кромке. */
   anchoredEndSpaceSize?: SharedValue<number>;

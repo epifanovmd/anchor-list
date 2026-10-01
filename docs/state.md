@@ -82,6 +82,7 @@ const shadowStyle = useAnimatedStyle(() => ({
 | `scrollLength` | `number` | Размер вьюпорта вдоль оси скролла |
 | `scrollSize` | `{ width, height }` | Размер вьюпорта целиком |
 | `headerSize` | `number` | Размер шапки вдоль оси |
+| `contentOrigin` | `number` | Начало строк в координатах контента: отступ контейнера контента плюс шапка |
 | `footerSize` | `number` | Размер подвала вдоль оси |
 | `anchoredEndSpaceSize` | `number` | Распорка у конца |
 
@@ -235,13 +236,14 @@ const totalSize = useAnchorListValue(listState, "totalSize");
 | --- | --- | --- |
 | `numContainers` | `number` | Сколько контейнеров существует |
 | `scrollAdjust` | `number` | Накопленная компенсация позиции |
-| `contentOrigin` | `number` | Начало координат элементов внутри контента |
 | `highlight` | `{ key, duration, fade, seq } \| null` | Горящая подсветка строки; строке её отдаёт `useAnchorListItemHighlight` |
 
-Эти четыре внутренние и меняются вместе с реализацией.
+Эти три внутренние и меняются вместе с реализацией.
 
-`contentOrigin` — разница между координатами элементов (от нуля) и координатами
-контента (в них работает смещение скролла): она равна размеру шапки.
+`contentOrigin` (есть и в `sharedValues`) — разница между координатами элементов
+(от нуля) и координатами контента, в которых работает смещение скролла: где
+кончается шапка, считая отступ контейнера контента над ней
+(`contentContainerStyle.paddingTop`, у горизонтального — `paddingLeft`).
 
 ---
 

@@ -66,7 +66,7 @@ const setup = (
       insetEnd,
       alignItemsAtEnd: false,
       totalSize: sharedValue(CONTENT),
-      headerSize: sharedValue(0),
+      contentOrigin: sharedValue(0),
       footerSize: sharedValue(0),
       anchoredEndSpaceSize: sharedValue(0),
       scrollLength: sharedValue(VIEWPORT),

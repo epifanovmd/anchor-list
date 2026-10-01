@@ -255,6 +255,38 @@ describe("ListRuntime — координаты шапки", () => {
     expect(runtime.getScroll()).toBe(1560);
   });
 
+  /**
+   * Жалоба: с `contentContainerStyle.paddingTop` диапазон, кромки, прилипание
+   * и переход к строке смещены ровно на величину отступа.
+   *
+   * Строки лежат под шапкой, а шапка — под отступом контента: начало
+   * координат элементов — это конец шапки, а не её высота.
+   */
+  it("учитывает отступ контента перед шапкой", () => {
+    const { store, runtime, adapter } = createRuntime();
+
+    runtime.setHeaderSize(60, 24);
+
+    expect(store.peek("contentOrigin")).toBe(84);
+    expect(store.peek("headerSize")).toBe(60);
+    expect(runtime.getPositionAtIndex(10)).toBe(1084);
+
+    runtime.scrollToIndex({ index: 10 });
+    expect(adapter.scrollToOffset).toHaveBeenLastCalledWith(1084, false);
+
+    runtime.setScroll(1084);
+    expect(runtime.getRange()).toMatchObject({ start: 10, end: 14 });
+  });
+
+  it("учитывает отступ контента и без шапки", () => {
+    const { store, runtime } = createRuntime();
+
+    runtime.setHeaderSize(0, 24);
+
+    expect(store.peek("contentOrigin")).toBe(24);
+    expect(runtime.getPositionAtIndex(0)).toBe(24);
+  });
+
   it("отдаёт начало координат элементов наружу", () => {
     const { store, runtime } = createRuntime();
 
