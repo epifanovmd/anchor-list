@@ -679,6 +679,13 @@ export interface IAnchorListProps<TItem> {
    * контентом.
    */
   bounces?: boolean;
+  /** Показывать индикатор прокрутки вдоль оси списка; по умолчанию — да. */
+  showsScrollIndicator?: boolean;
+  /**
+   * Касания при открытой клавиатуре — как у `ScrollView`. С `"handled"` нажатие
+   * на кнопку строки срабатывает сразу, а не только закрывает клавиатуру.
+   */
+  keyboardShouldPersistTaps?: "always" | "never" | "handled";
   /** Worklet-обработчики фаз скролла; см. {@link IAnchorListScrollHandlers}. */
   scrollHandlers?: IAnchorListScrollHandlers;
   /**

@@ -116,6 +116,8 @@ const AnchorListInner = <TItem,>(
     onScrollBeginDrag,
     onScrollEndDrag,
     bounces = false,
+    showsScrollIndicator = true,
+    keyboardShouldPersistTaps,
     scrollHandlers,
     renderScrollView,
   } = props;
@@ -457,6 +459,9 @@ const AnchorListInner = <TItem,>(
       automaticallyAdjustsScrollIndicatorInsets={!insetEnd}
       scrollEventThrottle={SCROLL_EVENT_THROTTLE}
       bounces={bounces}
+      showsVerticalScrollIndicator={!horizontal && showsScrollIndicator}
+      showsHorizontalScrollIndicator={horizontal && showsScrollIndicator}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
     >
       {/* Первым ребёнком: за ним следит нативное удержание позиции. */}
       <ListScrollAdjust />

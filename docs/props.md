@@ -579,6 +579,18 @@ pull-to-refresh, синхронизации баров. Каждый обраб�
 
 Стиль контента внутри `ScrollView`: отступы вокруг элементов.
 
+### `keyboardShouldPersistTaps?: "always" | "never" | "handled"`
+
+Касания при открытой клавиатуре — проп внутреннего `ScrollView`. По умолчанию
+(`"never"`) первое касание только закрывает клавиатуру; `"handled"` пропускает
+касание к кнопке строки или шапки (поиск в шапке списка).
+
+### `showsScrollIndicator?: boolean`
+
+Индикатор прокрутки вдоль оси списка (`showsVerticalScrollIndicator` или
+`showsHorizontalScrollIndicator` внутреннего `ScrollView` — по `horizontal`).
+По умолчанию `true`.
+
 ### `bounces?: boolean`
 
 Оттяжка за кромку на iOS, по умолчанию `false`. Включается под pull-to-refresh
@@ -622,6 +634,8 @@ Ref нижележащего `ScrollView`. Нужен тем, кто двига�
 | --- | --- |
 | `horizontal` | `false` |
 | `bounces` | `false` |
+| `showsScrollIndicator` | `true` |
+| `keyboardShouldPersistTaps` | `"never"` (как у `ScrollView`) |
 | `drawDistance` | `400` |
 | `scrollThrottleDistance` | `24` |
 | `gap` | `0` |
