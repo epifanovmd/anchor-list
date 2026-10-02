@@ -1,5 +1,31 @@
 # Changelog
 
+# [3.0.0](https://github.com/epifanovmd/anchor-list/compare/v2.2.0...v3.0.0) (2026-10-02)
+
+
+### Bug Fixes
+
+* **edges:** onEndReached повторяется у кромки после смены данных или высоты контента ([768fa77](https://github.com/epifanovmd/anchor-list/commit/768fa77555b6f043e8127b7f92df908ff0dfd235))
+* **edges:** короткий список просит следующую страницу без единого события скролла ([610e5d6](https://github.com/epifanovmd/anchor-list/commit/610e5d6c3f0c8580e78195339d7ceac1255e2eab))
+* **edges:** кромка без обработчика больше не глушит подгрузку у другой ([efee463](https://github.com/epifanovmd/anchor-list/commit/efee463fa8d8fc3e78c714d69f67a249b1362dbd))
+* **layout:** paddingTop в contentContainerStyle сдвигал диапазон, кромки и переход к строке ([3ec7b43](https://github.com/epifanovmd/anchor-list/commit/3ec7b43fe194ca8452a3b8c586eb4665df0e62a6))
+
+
+### Features
+
+* **layout:** заглушка пустого списка растягивается на свободное место — ListEmptyComponent ([84bce47](https://github.com/epifanovmd/anchor-list/commit/84bce474d0575adb1ffe95b8d8c04e14189d9a2e))
+* **layout:** зазор между шапкой, строками и подвалом — headerGap и footerGap ([fa35bc9](https://github.com/epifanovmd/anchor-list/commit/fa35bc982f438315f29d2ec1749b4886f306c13e))
+* **scroll:** pull-to-refresh собирается снаружи — bounces, scrollHandlers, renderScrollView ([58542da](https://github.com/epifanovmd/anchor-list/commit/58542dae815864eb047ae36c83a5bade537a8858))
+* **scroll:** пропы showsScrollIndicator и keyboardShouldPersistTaps ([2983236](https://github.com/epifanovmd/anchor-list/commit/2983236e5d77e964277ef56734f738a8e84c71f2))
+* **scroll:** сдвиг списка вместе с прилипшими копиями — contentTranslate ([79f574a](https://github.com/epifanovmd/anchor-list/commit/79f574a676b299c0b7c6d1d548a6c8b6ca330472))
+
+
+### BREAKING CHANGES
+
+* **layout:** у списка с gap и шапкой или подвалом между ними и
+строками появился зазор, равный gap. Чтобы вернуть прежнюю раскладку,
+передайте headerGap={0} и footerGap={0}.
+
 # [2.2.0](https://github.com/epifanovmd/anchor-list/compare/v2.1.0...v2.2.0) (2026-09-20)
 
 
