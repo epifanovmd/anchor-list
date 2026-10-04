@@ -17,6 +17,7 @@
 - [Состояние наружу](#состояние-наружу)
 - [События](#события)
 - [Стили и refs](#стили-и-refs)
+- [Пропы ScrollView](#пропы-scrollview)
 - [Таблица значений по умолчанию](#таблица-значений-по-умолчанию)
 
 ---
@@ -728,6 +729,40 @@ Ref нижележащего `ScrollView`. Нужен тем, кто двига�
 
 ---
 
+## Пропы ScrollView
+
+Пропы внутреннего `ScrollView`, которыми список не распоряжается сам, задаются
+прямо на списке и уходят в `ScrollView` как есть: `scrollEnabled`,
+`nestedScrollEnabled`, `scrollsToTop`, `onScrollToTop`, `overScrollMode`,
+`fadingEdgeLength`, `persistentScrollbar`, `indicatorStyle`,
+`directionalLockEnabled`, `alwaysBounceVertical`, `alwaysBounceHorizontal`,
+`canCancelContentTouches`, `testID`, доступность и прочие — тип
+`AnchorListScrollViewProps`.
+
+```tsx
+<AnchorList scrollEnabled={!locked} nestedScrollEnabled keyboardDismissMode="none" />
+```
+
+`keyboardDismissMode` по умолчанию — `"interactive"` на iOS и `"on-drag"` на
+Android: так контент едет за клавиатурой без рывка.
+
+Не пропускаются — тип их не принимает, а без TypeScript список отбрасывает их на
+рантайме (`AnchorListManagedScrollViewProp`):
+
+| Пропы | Почему | Вместо них |
+| --- | --- | --- |
+| `onScroll`, `onMomentumScrollBegin`, `onMomentumScrollEnd`, `scrollEventThrottle` | Скролл обрабатывает список на UI-потоке | `scrollHandlers`, `sharedValues` |
+| `onLayout`, `onContentSizeChange`, `onScrollBeginDrag`, `onScrollEndDrag`, `style`, `contentContainerStyle`, `horizontal`, `bounces`, `decelerationRate`, `keyboardShouldPersistTaps`, индикаторы | Свои пропы списка с тем же именем или своим вместо | Одноимённые пропы списка, `showsScrollIndicator` |
+| `snapToOffsets`, `snapToInterval`, `snapToAlignment`, `snapToStart`, `snapToEnd`, `disableIntervalMomentum`, `pagingEnabled` | Снап считает список | [`snap`](#snap-ianchorlistsnaptitem) |
+| `maintainVisibleContentPosition` | Удержанием позиции управляет список | [`maintainVisibleContentPosition`](#раскладка-и-позиция) списка |
+| `contentInset`, `contentInsetAdjustmentBehavior`, `automaticallyAdjustContentInsets`, `automaticallyAdjustKeyboardInsets`, `automaticallyAdjustsScrollIndicatorInsets`, `scrollIndicatorInsets`, `contentOffset` | Сдвигают систему координат, в которой список считает раскладку | `insetEnd`, `initialScroll` |
+| `stickyHeaderIndices`, `stickyHeaderHiddenOnScroll`, `StickyHeaderComponent`, `invertStickyHeaders` | Прилипание — своё | `sticky` |
+| `refreshControl` | Протяжка собирается снаружи | `bounces`, `scrollHandlers`, `renderScrollView`, `contentTranslate` |
+| `removeClippedSubviews` | Виртуализация — своя | — |
+| `zoomScale`, `minimumZoomScale`, `maximumZoomScale`, `bouncesZoom`, `centerContent` | Зум меняет координаты контента | — |
+
+---
+
 ## Таблица значений по умолчанию
 
 | Проп | По умолчанию |
@@ -736,6 +771,7 @@ Ref нижележащего `ScrollView`. Нужен тем, кто двига�
 | `bounces` | `false` |
 | `showsScrollIndicator` | `true` |
 | `keyboardShouldPersistTaps` | `"never"` (как у `ScrollView`) |
+| `keyboardDismissMode` | `"interactive"` на iOS, `"on-drag"` на Android |
 | `decelerationRate` | `"normal"` (как у `ScrollView`) |
 | `drawDistance` | `400` |
 | `scrollThrottleDistance` | `24` |

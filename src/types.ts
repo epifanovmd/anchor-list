@@ -2,6 +2,7 @@ import type { ComponentType, ReactElement, ReactNode } from "react";
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
+  ScrollViewProps,
   StyleProp,
   ViewStyle,
 } from "react-native";
@@ -488,6 +489,70 @@ export interface IAnchorListRef {
 }
 
 /**
+ * Пропы `ScrollView`, которыми распоряжается сам список.
+ *
+ * Одни он выставляет сам или заменяет своими (`style`, `onScroll`,
+ * `snapToOffsets`, индикаторы, `bounces`); другие сдвигают систему координат,
+ * в которой он считает раскладку (`contentInset`, `contentOffset`, авто-инсеты);
+ * третьи включают вторую механику поверх его собственной (`stickyHeaderIndices`,
+ * `refreshControl`, `removeClippedSubviews`, зум, `pagingEnabled`).
+ */
+export type AnchorListManagedScrollViewProp =
+  | "children"
+  | "horizontal"
+  | "style"
+  | "contentContainerStyle"
+  | "onLayout"
+  | "onContentSizeChange"
+  | "onScroll"
+  | "onScrollBeginDrag"
+  | "onScrollEndDrag"
+  | "onMomentumScrollBegin"
+  | "onMomentumScrollEnd"
+  | "scrollEventThrottle"
+  | "maintainVisibleContentPosition"
+  | "snapToOffsets"
+  | "snapToInterval"
+  | "snapToAlignment"
+  | "snapToStart"
+  | "snapToEnd"
+  | "disableIntervalMomentum"
+  | "pagingEnabled"
+  | "decelerationRate"
+  | "bounces"
+  | "keyboardShouldPersistTaps"
+  | "showsVerticalScrollIndicator"
+  | "showsHorizontalScrollIndicator"
+  | "automaticallyAdjustsScrollIndicatorInsets"
+  | "scrollIndicatorInsets"
+  | "contentOffset"
+  | "contentInset"
+  | "contentInsetAdjustmentBehavior"
+  | "automaticallyAdjustContentInsets"
+  | "automaticallyAdjustKeyboardInsets"
+  | "stickyHeaderIndices"
+  | "stickyHeaderHiddenOnScroll"
+  | "StickyHeaderComponent"
+  | "invertStickyHeaders"
+  | "refreshControl"
+  | "removeClippedSubviews"
+  | "zoomScale"
+  | "minimumZoomScale"
+  | "maximumZoomScale"
+  | "bouncesZoom"
+  | "centerContent";
+
+/**
+ * Пропы `ScrollView`, которые список передаёт внутреннему `ScrollView` как есть:
+ * `scrollEnabled`, `nestedScrollEnabled`, `scrollsToTop`, `overScrollMode`,
+ * `keyboardDismissMode`, `testID`, доступность и прочие.
+ */
+export type AnchorListScrollViewProps = Omit<
+  ScrollViewProps,
+  AnchorListManagedScrollViewProp
+>;
+
+/**
  * Пропы списка.
  *
  * Обязательны только данные, отрисовка строки, ключ и стартовая оценка размера
@@ -498,7 +563,7 @@ export interface IAnchorListRef {
  * подгрузки и вставки, на нём держатся измеренные размеры, переработка
  * контейнеров и удержание видимой позиции.
  */
-export interface IAnchorListProps<TItem> {
+export interface IAnchorListOwnProps<TItem> {
   data: readonly TItem[];
   renderItem: (props: IAnchorListRenderItemProps<TItem>) => ReactNode;
   /** Постоянный ключ элемента; от индекса зависеть не должен. */
@@ -790,3 +855,10 @@ export interface IAnchorListProps<TItem> {
    */
   refScrollView?: AnimatedRef<Animated.ScrollView>;
 }
+
+/**
+ * Пропы списка: собственные и пропы `ScrollView`, которые список пропускает
+ * насквозь. См. {@link IAnchorListOwnProps} и {@link AnchorListScrollViewProps}.
+ */
+export interface IAnchorListProps<TItem>
+  extends IAnchorListOwnProps<TItem>, AnchorListScrollViewProps {}

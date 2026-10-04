@@ -55,6 +55,7 @@ import { ListInsetEndSpace } from "./ListInsetEndSpace";
 import { ListScrollAdjust } from "./ListScrollAdjust";
 import { ListStickyOverlay } from "./ListStickyOverlay";
 import { getScrollIndicatorInsets } from "./scroll-indicator";
+import { omitManagedScrollViewProps } from "./scroll-view-props";
 import { withEdgeInset } from "./sticky-placement";
 
 /**
@@ -73,7 +74,7 @@ import { withEdgeInset } from "./sticky-placement";
  */
 const SCROLL_EVENT_THROTTLE = 1;
 /**
- * Как свайп по списку закрывает клавиатуру.
+ * Как свайп по списку закрывает клавиатуру, если `keyboardDismissMode` не задан.
  *
  * `interactive` iOS ведёт покадрово вместе с пальцем, и нижний отступ приходит
  * тем же кадром — контент едет за клавиатурой без рывка. На Android такого
@@ -390,6 +391,9 @@ const AnchorListInner = <TItem,>(
     [maintainVisibleContentPosition, revealed],
   );
 
+  // Всё, чем список не распоряжается сам, — как есть во внутренний ScrollView.
+  const scrollViewProps = omitManagedScrollViewProps(props);
+
   // Точки снапа считает ядро и уточняет по замерам: компонент от замеров не
   // перерисовывается, поэтому подписка — на сам сигнал.
   const snapOffsets = useSyncExternalStore(
@@ -530,6 +534,7 @@ const AnchorListInner = <TItem,>(
 
   const scrollView = (
     <Animated.ScrollView
+      {...scrollViewProps}
       ref={scrollRef}
       horizontal={horizontal}
       style={styles.scroll}
@@ -544,7 +549,9 @@ const AnchorListInner = <TItem,>(
       disableIntervalMomentum={snap?.oneAtATime}
       decelerationRate={decelerationRate}
       animatedProps={insetEnd ? scrollIndicatorProps : undefined}
-      keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      keyboardDismissMode={
+        scrollViewProps.keyboardDismissMode ?? KEYBOARD_DISMISS_MODE
+      }
       // iOS сам добавляет safe area к инсетам индикатора, а она уже входит
       // в отступ — авто-подстройка давала бы двойной.
       automaticallyAdjustsScrollIndicatorInsets={!insetEnd}

@@ -33,6 +33,7 @@
 | `stickyHeaderIndices` | `sticky` | Мощнее: обе кромки, два режима, отступы и пределы |
 | `windowSize` / `initialNumToRender` / `maxToRenderPerBatch` | `drawDistance` | Один проп в пикселях вместо трёх в «экранах» и «штуках» |
 | `removeClippedSubviews` | — | Всегда включено по смыслу: вне диапазона строк нет |
+| Прочие пропы `ScrollView` | Те же пропы на списке | `scrollEnabled`, `nestedScrollEnabled`, `scrollsToTop` и т. п. уходят в `ScrollView` как есть; чем список распоряжается сам — см. [Пропы ScrollView](props.md#пропы-scrollview) |
 
 ### `ref`
 
