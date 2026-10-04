@@ -131,7 +131,7 @@ const AnchorListInner = <TItem,>(
     contentContainerStyle,
     maintainVisibleContentPosition,
     sticky,
-    snapToIndices,
+    snap,
     scrollThrottleDistance,
     insetEnd,
     sharedValues,
@@ -144,6 +144,7 @@ const AnchorListInner = <TItem,>(
     bounces = false,
     showsScrollIndicator = true,
     keyboardShouldPersistTaps,
+    decelerationRate,
     scrollHandlers,
     renderScrollView,
     contentTranslate,
@@ -389,11 +390,14 @@ const AnchorListInner = <TItem,>(
     [maintainVisibleContentPosition, revealed],
   );
 
-  // Позиции уточняются измерениями. Пересчитываем на каждом рендере списка:
-  // мемоизация только по массиву индексов оставляла прежние оценочные offsets
-  // даже после смены данных или любой другой перерисовки владельца.
-  const snapToOffsets = snapToIndices?.map(
-    index => runtime.getPositionAtIndex(index) ?? 0,
+  // Точки снапа считает ядро и уточняет по замерам: компонент от замеров не
+  // перерисовывается, поэтому подписка — на сам сигнал.
+  const snapOffsets = useSyncExternalStore(
+    useCallback(
+      (onChange: () => void) => store.listen("snapOffsets", onChange),
+      [store],
+    ),
+    () => store.peek("snapOffsets"),
   );
 
   const handleContentSizeChange = useCallback(
@@ -534,7 +538,11 @@ const AnchorListInner = <TItem,>(
       onScroll={scrollHandler}
       onContentSizeChange={handleContentSizeChange}
       maintainVisibleContentPosition={nativeMaintainVisibleContentPosition}
-      snapToOffsets={snapToOffsets}
+      snapToOffsets={snapOffsets}
+      snapToStart={snap?.snapToStart}
+      snapToEnd={snap?.snapToEnd}
+      disableIntervalMomentum={snap?.oneAtATime}
+      decelerationRate={decelerationRate}
       animatedProps={insetEnd ? scrollIndicatorProps : undefined}
       keyboardDismissMode={KEYBOARD_DISMISS_MODE}
       // iOS сам добавляет safe area к инсетам индикатора, а она уже входит

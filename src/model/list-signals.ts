@@ -88,6 +88,13 @@ export interface IAnchorListSignals {
    * обязана пережить перепривязку контейнера. Ячейка сама сверяет ключ.
    */
   highlight: IAnchorListHighlightState | null;
+  /**
+   * Точки снапа — смещения контента для `snapToOffsets`; undefined — снапа нет.
+   *
+   * Обновляются, пока список стоит и в начале жеста: нативный слой читает их
+   * только в конце жеста.
+   */
+  snapOffsets: number[] | undefined;
 }
 
 /** Что ячейке нужно знать о подсветке. */

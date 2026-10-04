@@ -47,7 +47,9 @@ import {
 } from "../mvcp";
 import type { IScrollAdapter } from "../scroll";
 import {
+  computeSnapOffsets,
   getItemScrollOffset,
+  haveSameSnapOffsets,
   InitialOffsetResolver,
   InitialScroll,
   ItemHighlight,
@@ -229,6 +231,14 @@ export class ListRuntime<TItem> {
    * {@link isVisibleFirstJump}.
    */
   private visibleFirst = false;
+  /**
+   * Входы последнего расчёта точек снапа: пересчёт — только при их смене.
+   *
+   * Расчёт идёт по всем строкам, а проходов, пока список стоит, много —
+   * каждый замер. Сравниваются по ссылке: ревизия раскладки меняется на любом
+   * замере и смене данных.
+   */
+  private snapInputs: unknown[] | undefined;
   /**
    * Смещение предыдущего события скролла — им определяется направление.
    *
@@ -834,6 +844,9 @@ export class ListRuntime<TItem> {
     // Палец на экране — движение вот-вот начнётся, и запас подрезки нужен
     // раньше первого события скролла.
     this.atRest = false;
+    // Нативный слой читает точки снапа, когда палец отпускает экран: к этому
+    // моменту они должны быть посчитаны по тому, что измерилось в полёте.
+    this.publishSnapOffsets();
     this.allowedEdge = this.edges.beginGesture(this.velocity.get());
     // Список взяли в руки: доводка к концу обязана уступить жесту.
     this.maintainAtEnd.cancel();
@@ -1143,6 +1156,7 @@ export class ListRuntime<TItem> {
     this.store.set("totalSize", this.metrics.getTotalSize());
     this.publishVisibleRange();
     this.publishGeometry();
+    if (this.atRest) this.publishSnapOffsets();
     // По итогу прохода: только теперь известно, доехала ли цель до кадра.
     this.highlight.check();
 
@@ -1204,6 +1218,74 @@ export class ListRuntime<TItem> {
 
     this.store.set("contentSize", contentSize);
     this.store.set("maxScroll", Math.max(0, contentSize - this.scrollLength));
+  }
+
+  /**
+   * Точки снапа наружу.
+   *
+   * Только пока список стоит и в начале жеста: на броске замеры идут каждый
+   * кадр, а нативный слой читает точки, лишь когда палец отпускает экран, —
+   * публиковать их в полёте значило бы перерисовывать ScrollView впустую.
+   */
+  private publishSnapOffsets(): void {
+    const snap = this.props.snap;
+
+    if (!snap) {
+      this.snapInputs = undefined;
+      if (this.store.peek("snapOffsets") !== undefined) {
+        this.store.set("snapOffsets", undefined);
+      }
+
+      return;
+    }
+
+    const maxScroll = this.store.peek("maxScroll") ?? 0;
+    const inputs = [
+      this.layoutRevision,
+      this.scrollLength,
+      this.getContentOrigin(),
+      maxScroll,
+      this.props.data,
+      snap.to,
+      snap.align,
+      snap.offset,
+    ];
+    const previous = this.snapInputs;
+
+    if (previous && inputs.every((value, index) => value === previous[index]))
+      return;
+
+    this.snapInputs = inputs;
+
+    const offsets = computeSnapOffsets({
+      metrics: this.metrics,
+      indices: this.resolveSnapIndices(snap.to),
+      contentOrigin: this.getContentOrigin(),
+      scrollLength: this.scrollLength,
+      maxScroll,
+      align: snap.align,
+      offset: snap.offset,
+    });
+
+    if (!haveSameSnapOffsets(offsets, this.store.peek("snapOffsets"))) {
+      this.store.set("snapOffsets", offsets);
+    }
+  }
+
+  /** Строки-точки снапа по возрастанию; undefined — каждая строка. */
+  private resolveSnapIndices(
+    to: NonNullable<IAnchorListRuntimeProps<TItem>["snap"]>["to"],
+  ): number[] | undefined {
+    if (to === "item") return undefined;
+    if (typeof to !== "function") return [...to].sort((a, b) => a - b);
+
+    const indices: number[] = [];
+
+    this.props.data.forEach((item, index) => {
+      if (to(item, index)) indices.push(index);
+    });
+
+    return indices;
   }
 
   /** Границы видимого диапазона наружу; -1 — ни один элемент не в кадре. */

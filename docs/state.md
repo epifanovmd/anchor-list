@@ -237,6 +237,7 @@ const totalSize = useAnchorListValue(listState, "totalSize");
 | `numContainers` | `number` | Сколько контейнеров существует |
 | `scrollAdjust` | `number` | Накопленная компенсация позиции |
 | `highlight` | `{ key, duration, fade, seq } \| null` | Горящая подсветка строки; строке её отдаёт `useAnchorListItemHighlight` |
+| `snapOffsets` | `number[] \| undefined` | Точки снапа для `snapToOffsets`; обновляются, пока список стоит и в начале жеста |
 
 Эти три внутренние и меняются вместе с реализацией.
 

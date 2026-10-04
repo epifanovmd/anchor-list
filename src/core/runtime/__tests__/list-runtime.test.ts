@@ -2085,3 +2085,91 @@ describe("ListRuntime — подрезка у кромки", () => {
     expect(clippedByKey(store, "k6")).toBe(true);
   });
 });
+
+describe("ListRuntime — снап", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) =>
+      setTimeout(() => callback(0), 16) as unknown as number;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("без снапа точек нет", () => {
+    const { store } = createRuntime(rows(10));
+
+    expect(store.peek("snapOffsets")).toBeUndefined();
+  });
+
+  it("публикует точки по раскладке", () => {
+    const { store } = createRuntime(rows(10), {
+      snap: { to: [0, 2, 4], align: "start", offset: 0 },
+    });
+
+    expect(store.peek("snapOffsets")).toEqual([0, 200, 400]);
+  });
+
+  it("выбирает строки условием по элементу", () => {
+    const { store } = createRuntime(rows(10), {
+      snap: { to: (_, index) => index % 3 === 0, align: "start", offset: 0 },
+    });
+
+    // Строка 9 — за пределом скролла 500 и сливается с ним.
+    expect(store.peek("snapOffsets")).toEqual([0, 300, 500]);
+  });
+
+  /**
+   * Жалоба: снап промахивается по строкам, которые измерились после
+   * открытия списка.
+   *
+   * Точки считались в рендере компонента списка, а замеры его не
+   * перерисовывают: нативный слой притягивал к оценочным позициям.
+   */
+  it("обновляет точки после замера, пока список стоит", () => {
+    const { store, runtime } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      snap: { to: [0, 1, 2], align: "start", offset: 0 },
+    });
+
+    runtime.setItemSize("k0", 60);
+    nextFrame();
+
+    // Незамеренные строки того же типа считаются по среднему — тоже 60.
+    expect(store.peek("snapOffsets")).toEqual([0, 60, 120]);
+  });
+
+  /**
+   * На броске замеры идут каждый кадр, а нативный слой читает точки только в
+   * конце жеста: публиковать их в полёте — перерисовывать ScrollView впустую.
+   */
+  it("в полёте точки не публикует, а в начале жеста — публикует", () => {
+    const { store, runtime } = createRuntime(rows(40), {
+      getFixedItemSize: undefined,
+      snap: { to: [0, 1, 2], align: "start", offset: 0 },
+    });
+
+    runtime.setScroll(100);
+    runtime.setItemSize("k0", 60);
+    nextFrame();
+
+    expect(store.peek("snapOffsets")).toEqual([0, 100, 200]);
+
+    runtime.onGestureBegin();
+
+    // Незамеренные строки того же типа считаются по среднему — тоже 60.
+    expect(store.peek("snapOffsets")).toEqual([0, 60, 120]);
+  });
+
+  it("не пересоздаёт набор точек, когда они не изменились", () => {
+    const { store, runtime } = createRuntime(rows(10), {
+      snap: { to: [0, 2], align: "start", offset: 0 },
+    });
+    const before = store.peek("snapOffsets");
+
+    runtime.onGestureBegin();
+
+    expect(store.peek("snapOffsets")).toBe(before);
+  });
+});

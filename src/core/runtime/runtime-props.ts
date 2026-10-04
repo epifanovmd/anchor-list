@@ -1,6 +1,7 @@
 import type { AnchorListSizeCache } from "../../model";
 import type {
   AnchorListInitialScroll,
+  AnchorListSnapAlign,
   IAnchorListAnchoredEndSpace,
   IAnchorListProps,
   IAnchorListStickyConfig,
@@ -61,6 +62,8 @@ export interface IAnchorListRuntimeProps<TItem> {
   anchoredEndSpace?: IAnchorListAnchoredEndSpace;
   /** Наборы прилипающих элементов по кромкам. */
   sticky?: IAnchorListStickyConfig[];
+  /** Притяжение скролла; undefined — снапа нет. */
+  snap?: IAnchorListRuntimeSnap<TItem>;
   /** Пары «условие видимости — колбэк». */
   viewabilityPairs?: IAnchorListViewabilityPair<TItem>[];
   /** Первая раскладка завершена и начальный скролл применён. */
@@ -82,6 +85,25 @@ export interface IAnchorListRuntimeProps<TItem> {
  * случай, когда индекс уже не существует: данные могли смениться между снятием
  * якоря и проверкой.
  */
+/** Снап в том виде, в каком его считает ядро. */
+export interface IAnchorListRuntimeSnap<TItem> {
+  to: "item" | number[] | ((item: TItem, index: number) => boolean);
+  align: AnchorListSnapAlign;
+  offset: number;
+}
+
+/** `snap` с умолчаниями; `snapToIndices` — его сокращение, `snap` перекрывает. */
+const resolveSnap = <TItem>(
+  snap: IAnchorListProps<TItem>["snap"],
+  snapToIndices: IAnchorListProps<TItem>["snapToIndices"],
+): IAnchorListRuntimeSnap<TItem> | undefined => {
+  const to = snap?.to ?? snapToIndices;
+
+  if (to === undefined) return undefined;
+
+  return { to, align: snap?.align ?? "start", offset: snap?.offset ?? 0 };
+};
+
 export const createRuntimeProps = <TItem>(
   props: IAnchorListProps<TItem>,
 ): IAnchorListRuntimeProps<TItem> => {
@@ -105,6 +127,8 @@ export const createRuntimeProps = <TItem>(
     initialScroll,
     anchoredEndSpace,
     sticky,
+    snap,
+    snapToIndices,
     viewabilityPairs,
     onLoad,
     onStartReached,
@@ -149,6 +173,7 @@ export const createRuntimeProps = <TItem>(
     // Дженерик элемента ядру не нужен: наборы прилипания разбираются по
     // индексам, а рендер копии уходит наружу как есть.
     sticky: sticky as IAnchorListStickyConfig[] | undefined,
+    snap: resolveSnap(snap, snapToIndices),
     viewabilityPairs,
     onLoad,
     onStartReached,

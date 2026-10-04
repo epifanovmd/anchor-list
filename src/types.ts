@@ -42,6 +42,41 @@ export interface IAnchorListScrollSize {
   height: number;
 }
 
+/** Где во вьюпорте встаёт строка-точка снапа. */
+export type AnchorListSnapAlign = "start" | "center" | "end";
+
+/**
+ * Притяжение скролла к строкам.
+ *
+ * Снап делает нативный `ScrollView` — в инерции, с физикой платформы, — а
+ * список переводит строки в его точки и пересчитывает их, когда строки
+ * измеряются. Точки обновляются, пока список стоит и в начале жеста: нативный
+ * слой читает их, только когда палец отпускает экран.
+ */
+export interface IAnchorListSnap<TItem> {
+  /**
+   * Какие строки — точки: `"item"` — каждая, массив индексов или условие по
+   * элементу.
+   */
+  to: "item" | number[] | ((item: TItem, index: number) => boolean);
+  /** Где во вьюпорте встаёт строка; по умолчанию `"start"`. */
+  align?: AnchorListSnapAlign;
+  /** Сдвиг точки к началу, px: под навбар поверх списка и т. п. */
+  offset?: number;
+  /** Не дальше одной точки за бросок — постраничное листание. */
+  oneAtATime?: boolean;
+  /**
+   * Начало контента — тоже точка; по умолчанию `true`. `false` — между началом и
+   * первой точкой скролл свободный: например, над шапкой.
+   */
+  snapToStart?: boolean;
+  /**
+   * Конец контента — тоже точка; по умолчанию `true`. `false` — между последней
+   * точкой и концом скролл свободный: например, у подвала.
+   */
+  snapToEnd?: boolean;
+}
+
 /** Кромка, к которой прилипает якорь. */
 export type AnchorListStickyEdge = "start" | "end";
 
@@ -624,7 +659,9 @@ export interface IAnchorListProps<TItem> {
 
   /** Наборы прилипающих элементов; на каждой кромке не более одного. */
   sticky?: IAnchorListStickyConfig<TItem>[];
-  /** Точки притяжения скролла. */
+  /** Притяжение скролла к строкам. См. {@link IAnchorListSnap}. */
+  snap?: IAnchorListSnap<TItem>;
+  /** Сокращение для `snap={{ to: snapToIndices }}`; `snap` его перекрывает. */
   snapToIndices?: number[];
 
   /**
@@ -716,6 +753,11 @@ export interface IAnchorListProps<TItem> {
    * на кнопку строки срабатывает сразу, а не только закрывает клавиатуру.
    */
   keyboardShouldPersistTaps?: "always" | "never" | "handled";
+  /**
+   * Замедление инерции — как у `ScrollView`. Со снапом `"fast"` даёт короткий
+   * бросок от точки к точке.
+   */
+  decelerationRate?: "normal" | "fast" | number;
   /** Worklet-обработчики фаз скролла; см. {@link IAnchorListScrollHandlers}. */
   scrollHandlers?: IAnchorListScrollHandlers;
   /**

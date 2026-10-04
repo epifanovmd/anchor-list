@@ -9,3 +9,4 @@ export * from "./scroll-adapter";
 export * from "./scroll-freshness";
 export * from "./scroll-pass";
 export * from "./scroll-velocity";
+export * from "./snap-offsets";
