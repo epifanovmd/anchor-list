@@ -1,5 +1,20 @@
 # Changelog
 
+# [3.1.0](https://github.com/epifanovmd/anchor-list/compare/v3.0.0...v3.1.0) (2026-10-04)
+
+
+### Bug Fixes
+
+* **layout:** замеры применяются по живому смещению, когда скролл ушёл вперёд ([85656e8](https://github.com/epifanovmd/anchor-list/commit/85656e8580d0748782d1965f7acdeb87d942c2f1))
+* **scroll:** событие скролла не откладывается из-за проходов начала кадра ([2bba0b9](https://github.com/epifanovmd/anchor-list/commit/2bba0b9a5ac7acd9b10b0eb33e547315c042ad6a))
+
+
+### Features
+
+* **layout:** на скачке дальше запаса вперёд — только видимое ([9dd670a](https://github.com/epifanovmd/anchor-list/commit/9dd670a4ad0d2d0c3c362ca6804d66403cd5c484))
+* **scroll:** пропы ScrollView задаются прямо на списке ([5658fea](https://github.com/epifanovmd/anchor-list/commit/5658fea9b3f9d3ef6b56ebde021e1bb60f3ce59e))
+* **scroll:** снап с выравниванием и точками, уточнёнными по замерам — snap ([14631ed](https://github.com/epifanovmd/anchor-list/commit/14631ed7afcc9635d43206d922ba31e18f176453))
+
 # [3.0.0](https://github.com/epifanovmd/anchor-list/compare/v2.2.0...v3.0.0) (2026-10-02)
 
 
