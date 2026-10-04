@@ -186,8 +186,26 @@ export class ListRuntime<TItem> {
   private didLayout = false;
   /** Идёт удержание позиции: замер пустот в это время не имеет смысла. */
   private restoring = false;
-  /** Время последнего прохода по скроллу — по нему события сливаются в кадр. */
-  private lastPassAt = 0;
+  /**
+   * В этом кадре уже был проход по событию скролла: следующие события кадра
+   * сливаются в отложенный проход. Сбрасывается на границе кадра.
+   *
+   * Граница — кадр, а не время с прошлого прохода. Проходы начала кадра —
+   * отложенный и применение замеров — идут по смещению, которое скролл уже
+   * покинул, и событию, пришедшему следом, есть что делать. Считай их проходом
+   * этого кадра — событие откладывалось бы снова, и раскладка, однажды
+   * отстав, так и шла бы на кадр позади скролла.
+   */
+  private passedInFrame = false;
+  /** Сброс {@link passedInFrame} на границе кадра. */
+  private frameReset: number | undefined;
+  /**
+   * Время последнего применения замеров.
+   *
+   * Отложенному проходу оно заменяет его: посчитано по живому смещению того же
+   * кадра.
+   */
+  private lastFlushAt = 0;
   /** Отложенный на следующий кадр проход. */
   private deferredPass: number | undefined;
   /** Ожидание тишины, после которой скорость обнуляется. */
@@ -735,14 +753,14 @@ export class ListRuntime<TItem> {
 
     if (overrunning) listPerf.count("passOverrun");
 
-    const deferred =
-      !overrunning && shouldDeferScrollPass(Date.now() - this.lastPassAt);
+    const deferred = !overrunning && this.passedInFrame;
 
     if (deferred) {
       listPerf.count("passDeferred");
       this.deferPass();
     } else {
       this.runScrollPass();
+      this.markPassInFrame();
     }
 
     // Пороги подгрузки считаются на каждом событии: они дёшевы, а отложить их
@@ -1121,6 +1139,10 @@ export class ListRuntime<TItem> {
 
   /** Снятие таймеров и подписок при размонтировании списка. */
   dispose(): void {
+    if (this.frameReset !== undefined) {
+      cancelAnimationFrame(this.frameReset);
+      this.frameReset = undefined;
+    }
     if (this.deferredPass !== undefined) {
       cancelAnimationFrame(this.deferredPass);
       this.deferredPass = undefined;
@@ -1199,9 +1221,7 @@ export class ListRuntime<TItem> {
     const wasAtEnd =
       this.store.peek("isWithinMaintainScrollAtEndThreshold") ?? false;
 
-    // Пересчёт раскладки — полноценный проход по текущему смещению: отложенному
-    // проходу этого кадра после него делать нечего.
-    this.lastPassAt = Date.now();
+    this.lastFlushAt = Date.now();
     this.metrics.clearPending();
 
     // По снятому якорю, а не по пропу: на броске замер якорь не снимает, и
@@ -1396,8 +1416,19 @@ export class ListRuntime<TItem> {
 
   /** Пересчёт раскладки по текущему смещению. */
   private runScrollPass(): void {
-    this.lastPassAt = Date.now();
     this.calculateItemsInView();
+  }
+
+  /** Отметить проход по событию в этом кадре; сброс — на границе кадра. */
+  private markPassInFrame(): void {
+    this.passedInFrame = true;
+
+    if (this.frameReset !== undefined) return;
+
+    this.frameReset = requestAnimationFrame(() => {
+      this.frameReset = undefined;
+      this.passedInFrame = false;
+    });
   }
 
   /**
@@ -1416,10 +1447,11 @@ export class ListRuntime<TItem> {
       // он увидит новые метрики раньше MVCP и опубликует один кадр с новыми
       // позициями, но старой компенсацией. Layout-pass следом вернёт экран на
       // место, а эта пара commit-ов и выглядит как рывок при движении вверх.
-      // Если раскладка уже пересчиталась в этом кадре, повторять тоже нечего.
+      // Если замеры уже применены в этом кадре, повторять тоже нечего: они
+      // посчитаны по живому смещению.
       if (
         this.scheduler.isPending() ||
-        shouldDeferScrollPass(Date.now() - this.lastPassAt)
+        shouldDeferScrollPass(Date.now() - this.lastFlushAt)
       ) {
         listPerf.count("passMerged");
 

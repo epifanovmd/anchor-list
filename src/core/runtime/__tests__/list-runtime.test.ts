@@ -438,6 +438,77 @@ describe("ListRuntime — измерения", () => {
     expect(runtime.getScroll()).toBe(1000);
   });
 
+  /**
+   * Жалоба: на очень быстром скролле (Release, 100k px/s) виден только кусочек
+   * сверху, остальное — пустота.
+   *
+   * Применение замеров идёт в начале кадра по смещению, которое скролл уже
+   * покинул, и отмечалось как проход этого кадра. Событие скролла, пришедшее
+   * следом, считалось лишним и откладывалось на следующий кадр — где снова
+   * сливалось с замерами. Раскладка отставала от скролла на кадр: на такой
+   * скорости это три экрана.
+   */
+  it("не откладывает событие скролла из-за применения замеров", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+    });
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    nextFrame();
+    runtime.setItemSize("k5", 120);
+    nextFrame();
+
+    live = 2000;
+    runtime.setScroll(2000);
+
+    // Строки считаются по среднему замеренных — 120: смещение 2000 — это k16.
+    // Отложенный проход оставил бы диапазон у k4.
+    expect(runtime.getRange().start).toBe(16);
+  });
+
+  it("сливает в один проход события одного кадра", () => {
+    const { runtime, adapter } = createRuntime(rows(400));
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    live = 600;
+    runtime.setScroll(600);
+
+    // Второе событие кадра ждёт кадра и идёт по живому смещению.
+    expect(runtime.getRange().start).toBe(5);
+
+    nextFrame();
+
+    expect(runtime.getRange().start).toBe(6);
+  });
+
+  /**
+   * Жалоба та же: на 100k px/s виден только кусочек сверху.
+   *
+   * Отложенный проход идёт в начале кадра и отмечался как проход этого кадра.
+   * Событие скролла, пришедшее следом в том же кадре, снова откладывалось — и
+   * так на каждом кадре: однажды начав откладывать, список уже не выходил из
+   * отставания на кадр.
+   */
+  it("не откладывает событие из-за отложенного прохода начала кадра", () => {
+    const { runtime, adapter } = createRuntime(rows(400));
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    live = 600;
+    runtime.setScroll(600);
+    nextFrame();
+
+    live = 2000;
+    runtime.setScroll(2000);
+
+    expect(runtime.getRange().start).toBe(20);
+  });
+
   it("отбрасывает замер после перепривязки контейнера", () => {
     const { runtime } = createRuntime(rows(40), {
       getFixedItemSize: undefined,
