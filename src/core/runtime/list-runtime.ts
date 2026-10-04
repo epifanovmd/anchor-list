@@ -36,6 +36,7 @@ import {
   EMPTY_RANGE,
   getRangeLookahead,
   isOverrunning,
+  isVisibleFirstJump,
   LayoutScheduler,
   RenderReadiness,
 } from "../layout";
@@ -218,6 +219,16 @@ export class ListRuntime<TItem> {
   private atRest = true;
   /** Направление последнего движения: +1 к концу списка, -1 к началу. */
   private scrollDirection = 0;
+  /**
+   * Скролл скачет за событие дальше запаса вперёд: проходы держат только
+   * видимое.
+   *
+   * Снимается первым событием короче экрана и остановкой скролла — не кадром
+   * позже: при непрерывных скачках такой кадр приходит между двумя событиями,
+   * и полный запас, отрисованный в нём, снова не успевал бы к кадру. См.
+   * {@link isVisibleFirstJump}.
+   */
+  private visibleFirst = false;
   /**
    * Смещение предыдущего события скролла — им определяется направление.
    *
@@ -753,6 +764,14 @@ export class ListRuntime<TItem> {
 
     if (overrunning) listPerf.count("passOverrun");
 
+    // Свой переезд скачет по построению: у него своя доводка, и узкий
+    // диапазон ему только помешал бы.
+    this.visibleFirst =
+      !ownMove &&
+      isVisibleFirstJump(travelled, this.scrollLength, this.props.drawDistance);
+
+    if (this.visibleFirst) listPerf.count("passVisibleFirst");
+
     const deferred = !overrunning && this.passedInFrame;
 
     if (deferred) {
@@ -803,6 +822,7 @@ export class ListRuntime<TItem> {
       this.scrollDirection = 0;
       this.store.set("velocity", 0);
       this.atRest = true;
+      this.visibleFirst = false;
       // Запас подрезки снимается вместе с движением: пересчёт нужен, чтобы
       // строки вплотную за кадром снова закрылись своими границами.
       this.calculateItemsInView();
@@ -1109,6 +1129,7 @@ export class ListRuntime<TItem> {
       drawDistance: this.props.drawDistance,
       // Запас по ходу движения: на броске одного буфера не хватает.
       velocity: this.velocity.get(),
+      visibleFirst: this.visibleFirst,
     });
 
     if (layoutDebug.enabled) this.reportRange();
@@ -1550,7 +1571,11 @@ export class ListRuntime<TItem> {
       buffered: `${this.range.startBuffered}..${this.range.endBuffered}`,
       scroll: this.scroll,
       velocity: this.velocity.get(),
-      lookahead: getRangeLookahead(this.velocity.get(), this.scrollLength),
+      lookahead: getRangeLookahead(
+        this.velocity.get(),
+        this.scrollLength,
+        this.visibleFirst,
+      ),
       count: this.range.endBuffered - this.range.startBuffered + 1,
     });
   }

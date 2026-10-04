@@ -17,6 +17,11 @@ export interface IVisibleRangeParams {
   drawDistance: number;
   /** Скорость скролла, px/мс: положительная — к концу списка. */
   velocity?: number;
+  /**
+   * Скролл скачет дальше экрана за событие: держать только видимое и узкую
+   * полосу вокруг, без запаса по скорости. См. {@link isVisibleFirstJump}.
+   */
+  visibleFirst?: boolean;
 }
 
 /**
@@ -27,6 +32,34 @@ export interface IVisibleRangeParams {
  * буфера. Величина покрывает эту задержку с запасом.
  */
 const LOOKAHEAD_MS = 220;
+
+/**
+ * Полоса вокруг вьюпорта на скачках дальше экрана, px.
+ *
+ * Не ноль: между проходом и кадром на экране лежит коммит, и строка вплотную к
+ * кромке успевает въехать в кадр.
+ */
+const VISIBLE_FIRST_DRAW_DISTANCE = 50;
+
+/**
+ * Скролл ушёл за одно событие дальше, чем достаёт запас вперёд.
+ *
+ * Зачем нужно: на таком скачке запас вокруг прошлой позиции уже не пригодился,
+ * а полный запас вокруг новой — это вдвое больше строк на рендер. Такой проход
+ * не успевает к кадру: экран показывает уже следующее смещение, где строк ещё
+ * нет, и строки видны через кадр — моргают. Одно видимое к кадру успевает.
+ *
+ * Порог — дальность запаса вперёд (`drawDistance` и потолок запаса по скорости),
+ * а не экран: скачок в её пределах запас и покрывает, и снимать его там — значит
+ * оставить кадр после скачка пустым.
+ */
+export const isVisibleFirstJump = (
+  travelled: number,
+  scrollLength: number,
+  drawDistance: number,
+): boolean =>
+  scrollLength > 0 &&
+  travelled > drawDistance + scrollLength * LOOKAHEAD_SCREENS;
 
 /** Диапазон пустого списка: видимого нет, буфер тоже. */
 export const EMPTY_RANGE: IAnchorListRange = {
@@ -70,6 +103,7 @@ export const computeVisibleRange = ({
   scrollLength,
   drawDistance,
   velocity = 0,
+  visibleFirst = false,
 }: IVisibleRangeParams): IAnchorListRange => {
   const count = metrics.getCount();
 
@@ -79,9 +113,13 @@ export const computeVisibleRange = ({
   const overrunning = isOverrunning(velocity, scrollLength);
   // Запас растёт только по ходу движения: позади он и так уже отрисован, а
   // впереди именно его не хватает.
-  const lookahead = overrunning ? 0 : getLookahead(velocity, scrollLength);
-  const bufferedTop = scroll - drawDistance - Math.max(0, -lookahead);
-  const bufferedBottom = scrollBottom + drawDistance + Math.max(0, lookahead);
+  const lookahead =
+    overrunning || visibleFirst ? 0 : getLookahead(velocity, scrollLength);
+  const margin = visibleFirst
+    ? Math.min(drawDistance, VISIBLE_FIRST_DRAW_DISTANCE)
+    : drawDistance;
+  const bufferedTop = scroll - margin - Math.max(0, -lookahead);
+  const bufferedBottom = scrollBottom + margin + Math.max(0, lookahead);
 
   const startBuffered = metrics.findIndexAtOffset(Math.max(0, bufferedTop));
   let endBuffered = startBuffered;
@@ -162,8 +200,9 @@ export const isOverrunning = (
 export const getRangeLookahead = (
   velocity: number,
   scrollLength: number,
+  visibleFirst = false,
 ): number =>
-  isOverrunning(velocity, scrollLength)
+  visibleFirst || isOverrunning(velocity, scrollLength)
     ? 0
     : getLookahead(velocity, scrollLength);
 

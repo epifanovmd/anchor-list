@@ -71,9 +71,9 @@ export const formatListPerfReport = ({
         2,
       )}мс · слито ${counters.passDeferred}+${counters.passMerged} · без запаса ${
         counters.passOverrun
-      } · окно ${avg(stats.windowItems).toFixed(
-        0,
-      )} · контейнеров ${stats.containers.max}`,
+      } · скачков ${counters.passVisibleFirst} · окно ${avg(
+        stats.windowItems,
+      ).toFixed(0)} · контейнеров ${stats.containers.max}`,
     );
   }
 

@@ -131,6 +131,9 @@ describe("ListRuntime — раскладка", () => {
     const { runtime } = createRuntime(rows(40), { drawDistance: 250 });
 
     runtime.setScroll(1000);
+    // Переход с 0 на 1000 — скачок дальше экрана, и сразу после него держится
+    // только видимое; полный буфер — когда скролл встал.
+    jest.advanceTimersByTime(200);
 
     expect(runtime.getRange()).toMatchObject({
       startBuffered: 7,
@@ -507,6 +510,78 @@ describe("ListRuntime — измерения", () => {
     runtime.setScroll(2000);
 
     expect(runtime.getRange().start).toBe(20);
+  });
+
+  /**
+   * Скачок дальше экрана: только то, что в кадре, — проход успевает к кадру.
+   * Полный запас возвращается, когда скачки кончились.
+   */
+  it("на скачке дальше экрана рисует только видимое, запас — когда скролл встал", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      drawDistance: 300,
+    });
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    nextFrame();
+    live = 3000;
+    runtime.setScroll(3000);
+
+    expect(runtime.getRange()).toMatchObject({
+      startBuffered: 29,
+      endBuffered: 35,
+    });
+
+    // Событий больше нет — скролл встал.
+    jest.advanceTimersByTime(200);
+
+    const range = runtime.getRange();
+
+    expect(range.startBuffered).toBeLessThanOrEqual(27);
+    expect(range.endBuffered).toBeGreaterThanOrEqual(38);
+  });
+
+  /**
+   * Жалоба: после правки для 100k на 40k появилась пустота.
+   *
+   * Скачок дальше экрана, но в пределах запаса вперёд, запас и покрывает — так
+   * и было, пока порогом не стал один экран. Только видимое без запаса здесь
+   * оставляет кадр после скачка пустым.
+   */
+  it("держит полный запас на скачке, который запас вперёд покрывает", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      drawDistance: 300,
+    });
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    nextFrame();
+    // 800 px — дальше экрана в 500, но ближе запаса вперёд: 300 + 1.5 экрана.
+    live = 1300;
+    runtime.setScroll(1300);
+
+    expect(runtime.getRange().endBuffered).toBeGreaterThanOrEqual(21);
+  });
+
+  it("возвращает запас на первом событии короче экрана", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      drawDistance: 300,
+    });
+    let live = 500;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(500);
+    nextFrame();
+    live = 3000;
+    runtime.setScroll(3000);
+    nextFrame();
+    live = 3100;
+    runtime.setScroll(3100);
+
+    expect(runtime.getRange().startBuffered).toBeLessThanOrEqual(28);
+    expect(runtime.getRange().endBuffered).toBeGreaterThanOrEqual(39);
   });
 
   it("отбрасывает замер после перепривязки контейнера", () => {

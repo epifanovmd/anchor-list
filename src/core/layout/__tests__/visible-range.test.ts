@@ -38,6 +38,37 @@ describe("computeVisibleRange", () => {
     expect(range(metrics, 0)).toEqual(EMPTY_RANGE);
   });
 
+  /**
+   * Жалоба: на 100k px/s карточки моргают — видны через кадр, полупрозрачно.
+   *
+   * Скачок за событие дальше экрана: полный буфер вокруг новой позиции вдвое
+   * удорожает проход, и он не успевает к кадру — экран показывает уже следующее
+   * смещение. Только видимое и узкая полоса укладываются в кадр.
+   */
+  it("на скачке дальше экрана держит только видимое и узкую полосу", () => {
+    const metrics = createMetrics();
+    const params = {
+      metrics,
+      scroll: 1000,
+      scrollLength: SCROLL_LENGTH,
+      drawDistance: 300,
+      velocity: 2,
+    };
+
+    expect(computeVisibleRange(params)).toMatchObject({
+      startBuffered: 7,
+      endBuffered: 22,
+    });
+    expect(
+      computeVisibleRange({ ...params, visibleFirst: true }),
+    ).toMatchObject({
+      start: 10,
+      end: 14,
+      startBuffered: 9,
+      endBuffered: 15,
+    });
+  });
+
   it("находит элементы, пересёкшие вьюпорт", () => {
     const metrics = createMetrics();
 
