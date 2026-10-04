@@ -1210,6 +1210,7 @@ export class ListRuntime<TItem> {
     if (this.props.maintainVisibleContentPositionSize && this.mvcp.isArmed()) {
       this.restoreVisiblePosition("размер");
     } else {
+      this.catchUpLiveScroll();
       this.calculateItemsInView();
     }
 
@@ -1370,6 +1371,29 @@ export class ListRuntime<TItem> {
     });
   }
 
+  /**
+   * Подтянуть смещение раскладки к живому смещению UI-потока.
+   *
+   * Зачем нужно: проходы, которые не идут от события скролла, — отложенный и
+   * применение замеров, — выполняются кадром позже, а на загруженном JS через
+   * десятки миллисекунд. На броске скролл за это время уезжает на несколько
+   * экранов, и проход по смещению последнего события перепривязал бы
+   * контейнеры туда, где пользователя уже нет.
+   *
+   * Только вперёд по ходу движения — как и в основном проходе: живое смещение
+   * позади текущего означает, что устарело как раз оно.
+   */
+  private catchUpLiveScroll(): void {
+    const live = this.adapter?.getOffset?.();
+
+    if (
+      live !== undefined &&
+      Math.sign(live - this.getScroll()) === this.scrollDirection
+    ) {
+      this.scroll = live - this.getContentOrigin();
+    }
+  }
+
   /** Пересчёт раскладки по текущему смещению. */
   private runScrollPass(): void {
     this.lastPassAt = Date.now();
@@ -1403,17 +1427,8 @@ export class ListRuntime<TItem> {
       }
 
       const startedAt = listPerf.enabled ? perfNow() : 0;
-      const live = this.adapter?.getOffset?.();
 
-      // Только вперёд по ходу движения — как и в основном проходе: живое
-      // смещение позади текущего означает, что устарело как раз оно.
-      if (
-        live !== undefined &&
-        Math.sign(live - this.getScroll()) === this.scrollDirection
-      ) {
-        this.scroll = live - this.getContentOrigin();
-      }
-
+      this.catchUpLiveScroll();
       this.runScrollPass();
       this.checkThresholds();
       listPerf.sample("scrollMs", perfNow() - startedAt);

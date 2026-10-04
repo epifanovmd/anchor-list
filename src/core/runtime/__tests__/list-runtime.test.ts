@@ -388,6 +388,56 @@ describe("ListRuntime — измерения", () => {
     expect(store.peek("totalSize")).toBe(4000);
   });
 
+  /**
+   * Жалоба: на очень быстром скролле экран пустой почти целиком даже после
+   * прохода раскладки.
+   *
+   * Замеры применяются кадром позже, а на загруженном JS — через десятки
+   * миллисекунд. Скролл за это время уезжает на несколько экранов, и проход,
+   * посчитанный по смещению последнего события, перепривязывал контейнеры туда,
+   * где пользователя уже нет: двойная работа и пустой кадр.
+   */
+  it("применяет замеры по живому смещению, когда скролл ушёл вперёд", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+    });
+    let live = 900;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(900);
+    nextFrame();
+    live = 1000;
+    runtime.setScroll(1000);
+
+    // Событие о новом месте ещё не дошло, а замер уже ждёт конца кадра.
+    live = 6000;
+    runtime.setItemSize("k12", 120);
+    nextFrame();
+
+    expect(runtime.getScroll()).toBe(6000);
+    expect(runtime.getRange().start).toBeGreaterThan(40);
+  });
+
+  /** Живое смещение позади — устарело как раз оно: назад раскладка не едет. */
+  it("не откатывает замером раскладку к отставшему живому смещению", () => {
+    const { runtime, adapter } = createRuntime(rows(400), {
+      getFixedItemSize: undefined,
+    });
+    let live = 900;
+
+    (adapter.getOffset as jest.Mock).mockImplementation(() => live);
+    runtime.setScroll(900);
+    nextFrame();
+    live = 1000;
+    runtime.setScroll(1000);
+
+    live = 400;
+    runtime.setItemSize("k12", 120);
+    nextFrame();
+
+    expect(runtime.getScroll()).toBe(1000);
+  });
+
   it("отбрасывает замер после перепривязки контейнера", () => {
     const { runtime } = createRuntime(rows(40), {
       getFixedItemSize: undefined,
